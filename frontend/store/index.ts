@@ -1,10 +1,10 @@
-import { configureStore, getDefaultMiddleware } from '@reduxjs/toolkit';
-import { combineReducers } from 'redux';
-import { persistStore, persistReducer } from 'redux-persist';
-import storage from 'redux-persist/lib/storage';
+import { configureStore, getDefaultMiddleware } from "@reduxjs/toolkit";
+import { combineReducers } from "redux";
+import { persistStore, persistReducer } from "redux-persist";
+import storage from "redux-persist/lib/storage";
 
-import themeReducer from './slices/themeSlice';
-import favoritesReducer from './slices/favoritesSlice';
+import themeReducer from "./slices/themeSlice";
+import favoritesReducer from "./slices/favoritesSlice";
 
 const rootReducer = combineReducers({
   theme: themeReducer,
@@ -12,7 +12,7 @@ const rootReducer = combineReducers({
 });
 
 const persistConfig = {
-  key: 'root',
+  key: "root",
   version: 1,
   storage,
   // blacklist: ['someTransientSlice'],
@@ -24,7 +24,14 @@ export const store = configureStore({
   reducer: persistedReducer,
   middleware: getDefaultMiddleware({
     serializableCheck: {
-      ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE', 'persist/FLUSH', 'persist/PAUSE', 'persist/REGISTER', 'persist/PAUSE'],
+      ignoredActions: [
+        "persist/PERSIST",
+        "persist/REHYDRATE",
+        "persist/FLUSH",
+        "persist/PAUSE",
+        "persist/REGISTER",
+        "persist/PAUSE",
+      ],
     },
   }),
 });

@@ -64,9 +64,11 @@ pub async fn source_for_contract(
 
 pub fn write_temp_source(source: &str) -> Result<PathBuf, ApiError> {
     let temp_dir = std::env::temp_dir().join(format!("soroban-ml-{}", Uuid::new_v4()));
-    std::fs::create_dir_all(&temp_dir).map_err(|e| ApiError::internal(format!("Failed to create temp dir: {}", e)))?;
+    std::fs::create_dir_all(&temp_dir)
+        .map_err(|e| ApiError::internal(format!("Failed to create temp dir: {}", e)))?;
     let path = temp_dir.join("source.rs");
-    std::fs::write(&path, source).map_err(|e| ApiError::internal(format!("Failed to write temp source: {}", e)))?;
+    std::fs::write(&path, source)
+        .map_err(|e| ApiError::internal(format!("Failed to write temp source: {}", e)))?;
     Ok(path)
 }
 
@@ -97,14 +99,41 @@ pub fn run_ml_detector(source: &str) -> Result<MlDetectorOutput, ApiError> {
             items
                 .iter()
                 .map(|item| MlDetectorFinding {
-                    title: item.get("title").and_then(|v| v.as_str()).unwrap_or("ML finding").to_string(),
-                    severity: item.get("severity").and_then(|v| v.as_str()).unwrap_or("low").to_string(),
-                    category: item.get("category").and_then(|v| v.as_str()).unwrap_or("optimization").to_string(),
+                    title: item
+                        .get("title")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("ML finding")
+                        .to_string(),
+                    severity: item
+                        .get("severity")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("low")
+                        .to_string(),
+                    category: item
+                        .get("category")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("optimization")
+                        .to_string(),
                     line: item.get("line").and_then(|v| v.as_i64()).unwrap_or(1) as i32,
-                    evidence: item.get("evidence").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-                    explanation: item.get("explanation").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-                    recommendation: item.get("recommendation").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-                    confidence: item.get("confidence").and_then(|v| v.as_f64()).unwrap_or(0.0),
+                    evidence: item
+                        .get("evidence")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    explanation: item
+                        .get("explanation")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    recommendation: item
+                        .get("recommendation")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    confidence: item
+                        .get("confidence")
+                        .and_then(|v| v.as_f64())
+                        .unwrap_or(0.0),
                     weight: item.get("weight").and_then(|v| v.as_f64()).unwrap_or(0.0),
                 })
                 .collect::<Vec<_>>()
@@ -113,12 +142,30 @@ pub fn run_ml_detector(source: &str) -> Result<MlDetectorOutput, ApiError> {
 
     Ok(MlDetectorOutput {
         score: value.get("score").and_then(|v| v.as_i64()).unwrap_or(100) as i32,
-        grade: value.get("grade").and_then(|v| v.as_str()).unwrap_or("A").to_string(),
-        model: value.get("model").and_then(|v| v.as_str()).unwrap_or("ml-vuln-detector-v1").to_string(),
-        summary: value.get("summary").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+        grade: value
+            .get("grade")
+            .and_then(|v| v.as_str())
+            .unwrap_or("A")
+            .to_string(),
+        model: value
+            .get("model")
+            .and_then(|v| v.as_str())
+            .unwrap_or("ml-vuln-detector-v1")
+            .to_string(),
+        summary: value
+            .get("summary")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
         findings,
-        signals: value.get("signals").cloned().unwrap_or(Value::Array(vec![])),
-        probabilities: value.get("probabilities").cloned().unwrap_or(Value::Object(Default::default())),
+        signals: value
+            .get("signals")
+            .cloned()
+            .unwrap_or(Value::Array(vec![])),
+        probabilities: value
+            .get("probabilities")
+            .cloned()
+            .unwrap_or(Value::Object(Default::default())),
     })
 }
 
@@ -221,10 +268,34 @@ pub async fn persist_ml_scan(
         "summary": output.summary,
         "probabilities": output.probabilities,
     }))
-    .bind(output.findings.iter().filter(|finding| finding.severity == "critical").count() as i32)
-    .bind(output.findings.iter().filter(|finding| finding.severity == "high").count() as i32)
-    .bind(output.findings.iter().filter(|finding| finding.severity == "medium").count() as i32)
-    .bind(output.findings.iter().filter(|finding| finding.severity == "low").count() as i32)
+    .bind(
+        output
+            .findings
+            .iter()
+            .filter(|finding| finding.severity == "critical")
+            .count() as i32,
+    )
+    .bind(
+        output
+            .findings
+            .iter()
+            .filter(|finding| finding.severity == "high")
+            .count() as i32,
+    )
+    .bind(
+        output
+            .findings
+            .iter()
+            .filter(|finding| finding.severity == "medium")
+            .count() as i32,
+    )
+    .bind(
+        output
+            .findings
+            .iter()
+            .filter(|finding| finding.severity == "low")
+            .count() as i32,
+    )
     .bind(scan.id)
     .execute(&state.db)
     .await;

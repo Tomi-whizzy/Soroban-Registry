@@ -6,10 +6,7 @@ use uuid::Uuid;
 ///
 /// This function performs an atomic increment operation on the database
 /// to ensure consistency under concurrent access.
-pub async fn increment_usage_counter(
-    contract_id: Uuid,
-    db: &PgPool,
-) -> Result<(), sqlx::Error> {
+pub async fn increment_usage_counter(contract_id: Uuid, db: &PgPool) -> Result<(), sqlx::Error> {
     sqlx::query("UPDATE contracts SET usage_count = usage_count + 1 WHERE id = $1")
         .bind(contract_id)
         .execute(db)
@@ -35,8 +32,10 @@ pub async fn increment_usage_counter_with_timeout(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     match tokio::time::timeout(
         Duration::from_millis(10),
-        increment_usage_counter(contract_id, db)
-    ).await {
+        increment_usage_counter(contract_id, db),
+    )
+    .await
+    {
         Ok(Ok(())) => {
             tracing::debug!(
                 contract_id = %contract_id,
@@ -106,7 +105,7 @@ pub async fn increment_usage_counter_with_retry(
             }
             Err(err) => {
                 attempts += 1;
-                
+
                 if attempts > max_retries {
                     tracing::error!(
                         contract_id = %contract_id,
@@ -119,7 +118,7 @@ pub async fn increment_usage_counter_with_retry(
 
                 // Calculate exponential backoff delay: base_delay * 2^attempt
                 let delay_ms = base_delay_ms * (2_u64.pow(attempts - 1));
-                
+
                 tracing::warn!(
                     contract_id = %contract_id,
                     attempt = attempts,
@@ -160,11 +159,13 @@ pub async fn increment_usage_counter_with_retry_and_timeout(
     max_retries: Option<u32>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let timeout_ms = timeout_ms.unwrap_or(100);
-    
+
     match tokio::time::timeout(
         Duration::from_millis(timeout_ms),
-        increment_usage_counter_with_retry(contract_id, db, max_retries, Some(5)) // Use shorter base delay for timeout scenarios
-    ).await {
+        increment_usage_counter_with_retry(contract_id, db, max_retries, Some(5)), // Use shorter base delay for timeout scenarios
+    )
+    .await
+    {
         Ok(result) => result,
         Err(_timeout_err) => {
             tracing::warn!(
@@ -172,7 +173,11 @@ pub async fn increment_usage_counter_with_retry_and_timeout(
                 timeout_ms = timeout_ms,
                 "usage counter retry operation timed out"
             );
-            Err(format!("Usage counter retry operation timed out after {}ms", timeout_ms).into())
+            Err(format!(
+                "Usage counter retry operation timed out after {}ms",
+                timeout_ms
+            )
+            .into())
         }
     }
 }
@@ -192,11 +197,11 @@ mod tests {
         // This test would verify that the basic increment function works
         // let pool = setup_test_db().await;
         // let contract_id = Uuid::new_v4();
-        // 
+        //
         // // Test basic increment functionality
         // let result = increment_usage_counter(contract_id, &pool).await;
         // assert!(result.is_ok());
-        
+
         // For now, just test that the function signature is correct
         let contract_id = Uuid::new_v4();
         // This won't actually run but verifies the function signature compiles
@@ -248,7 +253,8 @@ mod tests {
         let _future = async {
             // This would fail at runtime but compiles correctly
             let pool: PgPool = unsafe { std::mem::zeroed() };
-            increment_usage_counter_with_retry_and_timeout(contract_id, &pool, Some(100), Some(3)).await
+            increment_usage_counter_with_retry_and_timeout(contract_id, &pool, Some(100), Some(3))
+                .await
         };
     }
 
@@ -256,13 +262,13 @@ mod tests {
     fn test_exponential_backoff_calculation() {
         // Test that exponential backoff delays are calculated correctly
         let base_delay = 10u64;
-        
+
         // First retry: 10ms * 2^0 = 10ms
         assert_eq!(base_delay * (2_u64.pow(0)), 10);
-        
+
         // Second retry: 10ms * 2^1 = 20ms
         assert_eq!(base_delay * (2_u64.pow(1)), 20);
-        
+
         // Third retry: 10ms * 2^2 = 40ms
         assert_eq!(base_delay * (2_u64.pow(2)), 40);
     }
@@ -273,7 +279,7 @@ mod tests {
         let default_max_retries = 3u32;
         let default_base_delay = 10u64;
         let default_timeout = 100u64;
-        
+
         // Verify defaults are within reasonable bounds
         assert!(default_max_retries > 0 && default_max_retries <= 5);
         assert!(default_base_delay >= 5 && default_base_delay <= 50);

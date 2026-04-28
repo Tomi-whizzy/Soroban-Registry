@@ -1,25 +1,22 @@
 // State Monitor module - Real-Time Contract State Monitor
 // Tracks state changes, detects anomalies, broadcasts via WebSocket
 
-pub mod event_listener;
 pub mod anomaly_detector;
+pub mod event_listener;
 pub mod handlers;
 
+use sqlx::PgPool;
 use std::sync::Arc;
 use tokio::sync::broadcast;
-use sqlx::PgPool;
 
 use crate::state::AppState;
-use crate::state_monitor::{
-    event_listener::EventListener,
-    anomaly_detector::AnomalyDetector,
-};
+use crate::state_monitor::{anomaly_detector::AnomalyDetector, event_listener::EventListener};
 
-use uuid::Uuid;
-use chrono::{DateTime, Utc};
-use serde::{Serialize, Deserialize};
-use serde_json::Value;
 use anyhow::Result;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use uuid::Uuid;
 
 /// Service that manages contract state monitoring
 pub struct StateMonitorService {
@@ -57,21 +54,16 @@ impl StateMonitorService {
     }
 
     /// Start monitoring state changes for a specific contract
-    pub async fn start_contract_monitoring(
-        &self,
-        contract_id: &str,
-        network: &str,
-    ) -> Result<()> {
-        self.event_listener.subscribe_contract(contract_id, network).await
+    pub async fn start_contract_monitoring(&self, contract_id: &str, network: &str) -> Result<()> {
+        self.event_listener
+            .subscribe_contract(contract_id, network)
+            .await
     }
 
     /// Stop monitoring a contract
-    pub async fn stop_contract_monitoring(
-        &self,
-        contract_id: &str,
-        network: &str,
-    ) -> Result<()> {
-        self.event_listener.unsubscribe_contract(contract_id, network)
+    pub async fn stop_contract_monitoring(&self, contract_id: &str, network: &str) -> Result<()> {
+        self.event_listener
+            .unsubscribe_contract(contract_id, network)
     }
 
     /// Get recent state changes for a contract
@@ -120,17 +112,17 @@ impl StateMonitorService {
         severity: Option<&str>,
         limit: i32,
     ) -> Result<Vec<AnomalyInfo>, anyhow::Error> {
-        use uuid::Uuid;
         use sqlx::Row;
-        
+        use uuid::Uuid;
+
         let mut query = String::from(
             "SELECT id, contract_id, anomaly_type, severity, description, \
              state_key, old_value, new_value, detected_at, is_resolved, resolution_notes, metadata \
-             FROM state_anomalies WHERE is_resolved = FALSE"
+             FROM state_anomalies WHERE is_resolved = FALSE",
         );
-        
+
         let mut bindings: Vec<sqlx::postgres::PgArguments> = Vec::new();
-        
+
         if let Some(cid_str) = contract_id {
             let cid = Uuid::parse_str(cid_str)
                 .map_err(|_| anyhow::anyhow!("Invalid contract ID format"))?;
@@ -156,7 +148,7 @@ impl StateMonitorService {
         for binding in bindings {
             sql_query = sql_query.bind(binding);
         }
-        
+
         let anomalies = sql_query.fetch_all(&self.db).await?;
         Ok(anomalies)
     }
@@ -189,7 +181,6 @@ impl StateMonitorService {
     }
 }
 
-
 impl StateMonitorService {
     pub fn new(
         db: PgPool,
@@ -216,7 +207,9 @@ impl StateMonitorService {
         contract_id: &str,
         network: &str,
     ) -> Result<(), anyhow::Error> {
-        self.event_listener.subscribe_contract(contract_id, network).await
+        self.event_listener
+            .subscribe_contract(contract_id, network)
+            .await
     }
 
     /// Stop monitoring a contract
@@ -225,7 +218,8 @@ impl StateMonitorService {
         contract_id: &str,
         network: &str,
     ) -> Result<(), anyhow::Error> {
-        self.event_listener.unsubscribe_contract(contract_id, network)
+        self.event_listener
+            .unsubscribe_contract(contract_id, network)
     }
 
     /// Get recent state changes for a contract
@@ -276,9 +270,9 @@ impl StateMonitorService {
         let mut query = String::from(
             "SELECT id, contract_id, anomaly_type, severity, description, \
              state_key, old_value, new_value, detected_at, is_resolved, resolution_notes, metadata \
-             FROM state_anomalies WHERE is_resolved = FALSE"
+             FROM state_anomalies WHERE is_resolved = FALSE",
         );
-        
+
         let mut params: Vec<uuid::Uuid> = Vec::new();
         let mut param_index = 1;
 
@@ -292,10 +286,10 @@ impl StateMonitorService {
 
         if let Some(sev) = severity {
             params.push(uuid::Uuid::new_v4()); // dummy for param count
-            // Use text param
+                                               // Use text param
             query = query.replace(
                 " AND state_key = ",
-                &format!(" AND severity = ${}", param_index)
+                &format!(" AND severity = ${}", param_index),
             );
         }
 
@@ -309,9 +303,7 @@ impl StateMonitorService {
                 .await?;
             Ok(anomalies)
         } else {
-            let anomalies = sqlx::query_as(&query)
-                .fetch_all(&self.db)
-                .await?;
+            let anomalies = sqlx::query_as(&query).fetch_all(&self.db).await?;
             Ok(anomalies)
         }
     }

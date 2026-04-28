@@ -87,7 +87,8 @@ pub async fn generate(
             api_url, contract_id
         ))
         .json(&body)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to connect to registry API")?;
 
     if !resp.status().is_success() {
@@ -120,7 +121,8 @@ pub async fn view(
             "{}/api/contracts/{}/release-notes/{}",
             api_url, contract_id, version
         ))
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to connect to registry API")?;
 
     if !resp.status().is_success() {
@@ -170,7 +172,8 @@ pub async fn edit(
             api_url, contract_id, version
         ))
         .json(&body)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to connect to registry API")?;
 
     if !resp.status().is_success() {
@@ -216,7 +219,8 @@ pub async fn publish(
             api_url, contract_id, version
         ))
         .json(&body)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to connect to registry API")?;
 
     if !resp.status().is_success() {
@@ -251,7 +255,8 @@ pub async fn list(api_url: &str, contract_id: &str, json_output: bool) -> Result
             "{}/api/contracts/{}/release-notes",
             api_url, contract_id
         ))
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to connect to registry API")?;
 
     if !resp.status().is_success() {

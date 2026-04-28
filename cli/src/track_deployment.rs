@@ -337,7 +337,12 @@ async fn poll_rpc_tx(
 
     log::debug!("POST {} getTransaction hash={}", rpc_url, tx_hash);
 
-    let res = client.post(rpc_url).json(&body).send_with_retry().await.ok()?;
+    let res = client
+        .post(rpc_url)
+        .json(&body)
+        .send_with_retry()
+        .await
+        .ok()?;
     if !res.status().is_success() {
         return None;
     }

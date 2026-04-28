@@ -1,8 +1,8 @@
 #![warn(unused_imports)]
 
 mod ai;
-mod state_monitor;
 mod search_postgres;
+mod state_monitor;
 mod stats;
 
 mod ab_test_handlers;
@@ -249,7 +249,7 @@ async fn main() -> Result<()> {
             info!("State monitor service initialized");
             let monitor = Arc::new(service);
             state.state_monitor = Some(monitor.clone());
-            
+
             // Spawn state monitor background task
             let monitor_clone = monitor.clone();
             tokio::spawn(async move {
@@ -257,7 +257,7 @@ async fn main() -> Result<()> {
                     error!("State monitor error: {}", e);
                 }
             });
-            
+
             Some(monitor)
         }
         Err(e) => {

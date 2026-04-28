@@ -85,10 +85,7 @@ async fn fetch_contracts(api_url: &str) -> Result<Vec<Value>> {
         .json()
         .await
         .context("Invalid contracts analytics response")?;
-    let items = body["items"]
-        .as_array()
-        .cloned()
-        .unwrap_or_default();
+    let items = body["items"].as_array().cloned().unwrap_or_default();
     Ok(items)
 }
 
@@ -170,7 +167,10 @@ fn resolve_period_start(period: &str) -> Result<DateTime<Utc>> {
             .with_timezone(&Utc);
         return Ok(parsed);
     }
-    anyhow::bail!("Invalid period '{}'. Use 7d, 30d, 90d, or start..end", period)
+    anyhow::bail!(
+        "Invalid period '{}'. Use 7d, 30d, 90d, or start..end",
+        period
+    )
 }
 
 fn parse_datetime(value: Option<&str>) -> Option<DateTime<Utc>> {
@@ -198,7 +198,8 @@ fn emit_report(report: &AnalyticsReport, format: &str, export: Option<&str>) -> 
 
     println!("{}", rendered);
     if let Some(path) = export {
-        fs::write(path, rendered).with_context(|| format!("Failed to write export file '{}'", path))?;
+        fs::write(path, rendered)
+            .with_context(|| format!("Failed to write export file '{}'", path))?;
         println!("Exported analytics to {}", path);
     }
     Ok(())

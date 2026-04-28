@@ -2,10 +2,10 @@
 // Uses the tsvector/tsquery infrastructure from database migrations
 
 use anyhow::Result;
-use sqlx::{PgPool, postgres::PgArguments};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use shared::models::{Contract, Network};
+use sqlx::{postgres::PgArguments, PgPool};
 use uuid::Uuid;
 
 use crate::error::ApiError;
@@ -71,9 +71,10 @@ impl PostgresSearchService {
     /// Uses the contracts_build_tsquery function for query sanitization
     pub async fn search(&self, query: SearchQuery) -> Result<SearchResult> {
         let start_time = std::time::Instant::now();
-        
+
         // Build the SQL query with tsquery
-        let mut sql = String::from(r#"
+        let mut sql = String::from(
+            r#"
             SELECT 
                 c.id,
                 c.contract_id,
@@ -93,7 +94,8 @@ impl PostgresSearchService {
                 ) as relevance_score
             FROM contracts c
             WHERE contracts_build_tsquery($1) IS NOT NULL
-        "#);
+        "#,
+        );
 
         // Add filters
         let mut param_index = 2;
@@ -105,7 +107,10 @@ impl PostgresSearchService {
                 let placeholders: Vec<String> = (param_index..param_index + cats.len() as i64)
                     .map(|i| format!("${}", i))
                     .collect();
-                sql.push_str(&format!(" AND c.category = ANY(ARRAY[{}])", placeholders.join(", ")));
+                sql.push_str(&format!(
+                    " AND c.category = ANY(ARRAY[{}])",
+                    placeholders.join(", ")
+                ));
                 for cat in cats {
                     args.push(Box::new(cat.clone()));
                     param_index += 1;
@@ -118,8 +123,10 @@ impl PostgresSearchService {
                 let placeholders: Vec<String> = (param_index..param_index + nets.len() as i64)
                     .map(|i| format!("${}", i))
                     .collect();
-                sql.push_str(&format!(" AND c.network = ANY(ARRAY[{}, {}]::network_type[])", 
-                    placeholders.join(", ")));
+                sql.push_str(&format!(
+                    " AND c.network = ANY(ARRAY[{}, {}]::network_type[])",
+                    placeholders.join(", ")
+                ));
                 for net in nets {
                     args.push(Box::new(net.to_string()));
                     param_index += 1;
@@ -145,9 +152,13 @@ impl PostgresSearchService {
         // Order by relevance and limit
         let limit = query.limit.unwrap_or(20).clamp(1, 100);
         let offset = query.offset.unwrap_or(0).max(0);
-        
+
         sql.push_str(" ORDER BY relevance_score DESC");
-        sql.push_str(&format!(" LIMIT ${} OFFSET ${}", param_index, param_index + 1));
+        sql.push_str(&format!(
+            " LIMIT ${} OFFSET ${}",
+            param_index,
+            param_index + 1
+        ));
         args.push(Box::new(limit));
         args.push(Box::new(offset));
 
@@ -163,9 +174,7 @@ impl PostgresSearchService {
             query_builder = query_builder.bind(arg.as_ref());
         }
 
-        let rows = query_builder
-            .fetch_all(&self.db)
-            .await?;
+        let rows = query_builder.fetch_all(&self.db).await?;
 
         let total = sqlx::query_scalar::<_, i64>(&count_sql)
             .bind_all(args.iter().take(args.len() - 2)) // exclude limit/offset for count
@@ -174,7 +183,8 @@ impl PostgresSearchService {
 
         let took = start_time.elapsed().as_millis() as u64;
 
-        let contracts = rows.into_iter()
+        let contracts = rows
+            .into_iter()
             .map(|row| ContractSearchResult {
                 id: row.id,
                 contract_id: row.contract_id,
@@ -206,7 +216,7 @@ impl PostgresSearchService {
             WHERE to_tsvector('english', name) @@ to_tsquery('english', $1 || ':*')
             ORDER BY ts_rank(to_tsvector('english', name), to_tsquery('english', $1 || ':*')) DESC
             LIMIT $2
-            "#
+            "#,
         )
         .bind(query)
         .bind(limit)
@@ -229,7 +239,7 @@ impl PostgresSearchService {
             GROUP BY c.id, c.name
             ORDER BY COUNT(*) DESC
             LIMIT 10
-            "#
+            "#,
         )
         .bind(timeframe_hours)
         .fetch_all(&self.db)
@@ -258,29 +268,41 @@ pub async fn fulltext_search_handler(
 ) -> Result<Json<SearchResult>, ApiError> {
     let query = params.q.as_deref().unwrap_or("");
     if query.is_empty() {
-        return Err(ApiError::bad_request("EMPTY_QUERY", "Search query cannot be empty"));
+        return Err(ApiError::bad_request(
+            "EMPTY_QUERY",
+            "Search query cannot be empty",
+        ));
     }
 
     let search_req = SearchQuery {
         query: query.to_string(),
         categories: params.category.as_ref().map(|c| vec![c.clone()]).flatten(),
-        networks: params.network.as_ref().map(|n| {
-            n.split(',')
-                .filter_map(|s| match s {
-                    "mainnet" => Some(Network::Mainnet),
-                    "testnet" => Some(Network::Testnet),
-                    "futurenet" => Some(Network::Futurenet),
-                    _ => None,
-                })
-                .collect::<Vec<Network>>()
-        }).flatten(),
+        networks: params
+            .network
+            .as_ref()
+            .map(|n| {
+                n.split(',')
+                    .filter_map(|s| match s {
+                        "mainnet" => Some(Network::Mainnet),
+                        "testnet" => Some(Network::Testnet),
+                        "futurenet" => Some(Network::Futurenet),
+                        _ => None,
+                    })
+                    .collect::<Vec<Network>>()
+            })
+            .flatten(),
         verified_only: params.verified_only,
-        tags: params.tags.as_ref().map(|t| t.split(',').map(|s| s.to_string()).collect()),
+        tags: params
+            .tags
+            .as_ref()
+            .map(|t| t.split(',').map(|s| s.to_string()).collect()),
         limit: params.limit,
         offset: params.offset,
     };
 
-    let result = state.pg_search.search(search_req)
+    let result = state
+        .pg_search
+        .search(search_req)
         .await
         .map_err(|e| ApiError::internal_error("SEARCH_ERROR", e.to_string()))?;
 

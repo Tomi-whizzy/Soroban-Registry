@@ -97,7 +97,10 @@ pub async fn run(
     anyhow::ensure!(path.is_file(), "File not found: {}", file_path);
 
     let format_str = format.unwrap_or_else(|| {
-        let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("unknown");
+        let ext = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("unknown");
         if ext == "gz" || ext == "tar" {
             "archive"
         } else {
@@ -110,7 +113,10 @@ pub async fn run(
         "csv" => import_csv(api_url, path, network_flag, validate, dry_run).await,
         "archive" | "tar.gz" => {
             if dry_run {
-                println!("{} Archive dry-run not fully supported, skipping extraction.", "i".cyan());
+                println!(
+                    "{} Archive dry-run not fully supported, skipping extraction.",
+                    "i".cyan()
+                );
                 return Ok(());
             }
             if validate {
@@ -118,9 +124,16 @@ pub async fn run(
             }
             let dest = Path::new(output_dir);
             let manifest = extract_and_verify(path, dest)?;
-            
-            println!("{}", "✓ Import complete — integrity verified!".green().bold());
-            println!("  {}: {}", "Contract".bold(), manifest.contract_id.bright_black());
+
+            println!(
+                "{}",
+                "✓ Import complete — integrity verified!".green().bold()
+            );
+            println!(
+                "  {}: {}",
+                "Contract".bold(),
+                manifest.contract_id.bright_black()
+            );
             println!("  {}: {}", "Name".bold(), manifest.name);
             if let Some(n) = network_flag {
                 println!("  {}: {}", "Network".bold(), n.bright_blue());
@@ -128,13 +141,22 @@ pub async fn run(
             println!("  {}: {}", "SHA-256".bold(), manifest.sha256.bright_black());
             Ok(())
         }
-        _ => bail!("Unsupported format: {}. Use json, csv, or archive.", format_str),
+        _ => bail!(
+            "Unsupported format: {}. Use json, csv, or archive.",
+            format_str
+        ),
     }
 }
 
-async fn import_json(api_url: &str, path: &Path, network_flag: Option<&str>, validate: bool, dry_run: bool) -> Result<()> {
+async fn import_json(
+    api_url: &str,
+    path: &Path,
+    network_flag: Option<&str>,
+    validate: bool,
+    dry_run: bool,
+) -> Result<()> {
     let content = fs::read_to_string(path).context("Failed to read JSON file")?;
-    
+
     // Support either an array of contracts or a wrapper object like {"contracts": [...]}
     let mut payload_list: Vec<ImportPayload> = match serde_json::from_str(&content) {
         Ok(arr) => arr,
@@ -143,28 +165,37 @@ async fn import_json(api_url: &str, path: &Path, network_flag: Option<&str>, val
             if let Some(arr) = wrapper.get("contracts").and_then(|c| c.as_array()) {
                 serde_json::from_value(serde_json::Value::Array(arr.clone()))?
             } else {
-                bail!("Invalid JSON format. Expected array of contracts or {{\"contracts\": [...]}}")
+                bail!(
+                    "Invalid JSON format. Expected array of contracts or {{\"contracts\": [...]}}"
+                )
             }
         }
     };
-    
+
     process_bulk_import(api_url, &mut payload_list, network_flag, validate, dry_run).await
 }
 
-async fn import_csv(api_url: &str, path: &Path, network_flag: Option<&str>, validate: bool, dry_run: bool) -> Result<()> {
+async fn import_csv(
+    api_url: &str,
+    path: &Path,
+    network_flag: Option<&str>,
+    validate: bool,
+    dry_run: bool,
+) -> Result<()> {
     let mut reader = csv::Reader::from_path(path)?;
     let mut payload_list = Vec::new();
 
     for result in reader.deserialize() {
         let record: CsvImportPayload = result?;
-        
-        let tags = record.tags
+
+        let tags = record
+            .tags
             .unwrap_or_default()
             .split(',')
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty())
             .collect();
-            
+
         payload_list.push(ImportPayload {
             contract_id: record.contract_id,
             name: record.name,
@@ -174,7 +205,9 @@ async fn import_csv(api_url: &str, path: &Path, network_flag: Option<&str>, vali
             tags,
             wasm_hash: record.wasm_hash,
             source_url: record.source_url,
-            publisher_address: record.publisher_address.unwrap_or_else(|| "Unknown".to_string()),
+            publisher_address: record
+                .publisher_address
+                .unwrap_or_else(|| "Unknown".to_string()),
         });
     }
 
@@ -196,7 +229,7 @@ async fn process_bulk_import(
         if p.network.is_empty() {
             p.network = default_network.clone();
         }
-        
+
         if validate {
             if p.contract_id.trim().is_empty() {
                 errors.push(format!("Row {}: contract_id is empty", i + 1));
@@ -231,18 +264,20 @@ async fn process_bulk_import(
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(60))
         .build()?;
-    
+
     let url = format!("{}/api/contracts", api_url);
     let mut success_ids = Vec::new();
     let mut has_failure = false;
 
     for (i, payload) in payload_list.iter().enumerate() {
-        print!("  [{}/{}] Importing {} ... ", i + 1, payload_list.len(), payload.contract_id.bold());
-        
-        let response = client
-            .post(&url)
-            .json(payload)
-            .send_with_retry().await;
+        print!(
+            "  [{}/{}] Importing {} ... ",
+            i + 1,
+            payload_list.len(),
+            payload.contract_id.bold()
+        );
+
+        let response = client.post(&url).json(payload).send_with_retry().await;
 
         match response {
             Ok(resp) => {
@@ -267,7 +302,12 @@ async fn process_bulk_import(
     }
 
     if has_failure && !success_ids.is_empty() {
-        println!("\n{}", "Error encountered. Rolling back successful imports...".yellow().bold());
+        println!(
+            "\n{}",
+            "Error encountered. Rolling back successful imports..."
+                .yellow()
+                .bold()
+        );
         // Since the API might not support rollback delete directly from the CLI (no endpoint in contracts.rs),
         // we will print a warning if we cannot rollback or try DELETE.
         // Assuming there is a DELETE endpoint: DELETE /api/contracts/{id}
@@ -290,6 +330,9 @@ async fn process_bulk_import(
         bail!("Import failed.");
     }
 
-    println!("\n{}", "✓ All contracts imported successfully!".green().bold());
+    println!(
+        "\n{}",
+        "✓ All contracts imported successfully!".green().bold()
+    );
     Ok(())
 }

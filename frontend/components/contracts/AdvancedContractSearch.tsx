@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, {
   useCallback,
@@ -6,9 +6,9 @@ import React, {
   useMemo,
   useRef,
   useState,
-} from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+} from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import {
   Bookmark,
   ChevronDown,
@@ -16,14 +16,14 @@ import {
   Search,
   SlidersHorizontal,
   X,
-} from 'lucide-react';
-import { api, type Contract, type ContractSearchParams } from '@/lib/api';
-import ContractCard from '@/components/ContractCard';
-import ContractCardSkeleton from '@/components/ContractCardSkeleton';
+} from "lucide-react";
+import { api, type Contract, type ContractSearchParams } from "@/lib/api";
+import ContractCard from "@/components/ContractCard";
+import ContractCardSkeleton from "@/components/ContractCardSkeleton";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type Network = 'mainnet' | 'testnet' | 'futurenet';
+type Network = "mainnet" | "testnet" | "futurenet";
 
 interface AdvancedSearchFilters {
   query: string;
@@ -43,36 +43,36 @@ interface SavedSearch {
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 const NETWORK_OPTIONS: { value: Network; label: string }[] = [
-  { value: 'mainnet', label: 'Mainnet' },
-  { value: 'testnet', label: 'Testnet' },
-  { value: 'futurenet', label: 'Futurenet' },
+  { value: "mainnet", label: "Mainnet" },
+  { value: "testnet", label: "Testnet" },
+  { value: "futurenet", label: "Futurenet" },
 ];
 
 const CATEGORY_OPTIONS = [
-  'DeFi',
-  'NFT',
-  'Governance',
-  'Infrastructure',
-  'Payment',
-  'Identity',
-  'Gaming',
-  'Social',
+  "DeFi",
+  "NFT",
+  "Governance",
+  "Infrastructure",
+  "Payment",
+  "Identity",
+  "Gaming",
+  "Social",
 ];
 
-const SAVED_SEARCHES_KEY = 'soroban_registry_saved_searches';
+const SAVED_SEARCHES_KEY = "soroban_registry_saved_searches";
 const PAGE_SIZE = 12;
 const SEARCH_DEBOUNCE_MS = 250;
 
 const EMPTY_STATE_SUGGESTIONS = [
-  'defi',
-  'nft',
-  'token',
-  'governance',
-  'payment',
+  "defi",
+  "nft",
+  "token",
+  "governance",
+  "payment",
 ];
 
 const DEFAULT_FILTERS: AdvancedSearchFilters = {
-  query: '',
+  query: "",
   networks: [],
   categories: [],
   verified_only: false,
@@ -89,33 +89,33 @@ function filtersToParams(filters: AdvancedSearchFilters): ContractSearchParams {
     verified_only: filters.verified_only || undefined,
     page: filters.page,
     page_size: PAGE_SIZE,
-    sort_by: 'relevance',
+    sort_by: "relevance",
   };
 }
 
 function filtersToUrlParams(filters: AdvancedSearchFilters): URLSearchParams {
   const params = new URLSearchParams();
-  if (filters.query) params.set('q', filters.query);
-  if (filters.networks.length > 0) params.set('networks', filters.networks.join(','));
-  if (filters.categories.length > 0) params.set('categories', filters.categories.join(','));
-  if (filters.verified_only) params.set('verified', '1');
-  if (filters.page > 1) params.set('page', String(filters.page));
+  if (filters.query) params.set("q", filters.query);
+  if (filters.networks.length > 0)
+    params.set("networks", filters.networks.join(","));
+  if (filters.categories.length > 0)
+    params.set("categories", filters.categories.join(","));
+  if (filters.verified_only) params.set("verified", "1");
+  if (filters.page > 1) params.set("page", String(filters.page));
   return params;
 }
 
 function urlParamsToFilters(params: URLSearchParams): AdvancedSearchFilters {
-  const networksRaw = params.get('networks') ?? '';
-  const categoriesRaw = params.get('categories') ?? '';
+  const networksRaw = params.get("networks") ?? "";
+  const categoriesRaw = params.get("categories") ?? "";
   return {
-    query: params.get('q') ?? '',
+    query: params.get("q") ?? "",
     networks: networksRaw
-      ? (networksRaw.split(',').filter(Boolean) as Network[])
+      ? (networksRaw.split(",").filter(Boolean) as Network[])
       : [],
-    categories: categoriesRaw
-      ? categoriesRaw.split(',').filter(Boolean)
-      : [],
-    verified_only: params.get('verified') === '1',
-    page: Math.max(1, Number(params.get('page') ?? 1)),
+    categories: categoriesRaw ? categoriesRaw.split(",").filter(Boolean) : [],
+    verified_only: params.get("verified") === "1",
+    page: Math.max(1, Number(params.get("page") ?? 1)),
   };
 }
 
@@ -129,16 +129,19 @@ function hasActiveFilters(filters: AdvancedSearchFilters): boolean {
 }
 
 function loadSavedSearches(): SavedSearch[] {
-  if (typeof window === 'undefined') return [];
+  if (typeof window === "undefined") return [];
   try {
-    return JSON.parse(localStorage.getItem(SAVED_SEARCHES_KEY) ?? '[]');
+    return JSON.parse(localStorage.getItem(SAVED_SEARCHES_KEY) ?? "[]");
   } catch {
     return [];
   }
 }
 
 function persistSavedSearches(searches: SavedSearch[]) {
-  localStorage.setItem(SAVED_SEARCHES_KEY, JSON.stringify(searches.slice(0, 10)));
+  localStorage.setItem(
+    SAVED_SEARCHES_KEY,
+    JSON.stringify(searches.slice(0, 10)),
+  );
 }
 
 function toggle<T>(arr: T[], item: T): T[] {
@@ -177,8 +180,8 @@ function MultiSelectDropdown({
     const handler = (e: MouseEvent) => {
       if (!ref.current?.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
   const summary =
@@ -188,7 +191,7 @@ function MultiSelectDropdown({
         ? options
             .filter((o) => selected.includes(o.value))
             .map((o) => o.label)
-            .join(', ')
+            .join(", ")
         : `${selected.length} selected`;
 
   return (
@@ -201,8 +204,8 @@ function MultiSelectDropdown({
         onClick={() => setOpen((v) => !v)}
         className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40 ${
           selected.length > 0
-            ? 'border-primary bg-primary/10 text-primary font-medium'
-            : 'border-border bg-card text-foreground hover:border-primary/40'
+            ? "border-primary bg-primary/10 text-primary font-medium"
+            : "border-border bg-card text-foreground hover:border-primary/40"
         }`}
       >
         <span className="whitespace-nowrap">{summary}</span>
@@ -215,7 +218,7 @@ function MultiSelectDropdown({
           </span>
         )}
         <ChevronDown
-          className={`h-3.5 w-3.5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`h-3.5 w-3.5 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
         />
       </button>
 
@@ -241,14 +244,25 @@ function MultiSelectDropdown({
                     <span
                       className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
                         checked
-                          ? 'border-primary bg-primary text-white'
-                          : 'border-border bg-card'
+                          ? "border-primary bg-primary text-white"
+                          : "border-border bg-card"
                       }`}
                       aria-hidden="true"
                     >
                       {checked && (
-                        <svg viewBox="0 0 10 8" className="h-2.5 w-2.5" fill="currentColor">
-                          <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                        <svg
+                          viewBox="0 0 10 8"
+                          className="h-2.5 w-2.5"
+                          fill="currentColor"
+                        >
+                          <path
+                            d="M1 4l3 3 5-6"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            fill="none"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
                         </svg>
                       )}
                     </span>
@@ -317,7 +331,7 @@ function EmptyState({ query, onSuggestion, onClearFilters }: EmptyStateProps) {
         <Search className="h-7 w-7 text-muted-foreground" />
       </div>
       <h3 className="mb-2 text-lg font-semibold text-foreground">
-        {query ? `No results for "${query}"` : 'No contracts found'}
+        {query ? `No results for "${query}"` : "No contracts found"}
       </h3>
       <p className="mb-6 max-w-xs text-sm text-muted-foreground">
         Try a different search term, remove some filters, or explore these
@@ -364,7 +378,9 @@ function SavedSearchesPanel({
   return (
     <div className="absolute right-0 top-full z-30 mt-1 w-72 rounded-xl border border-border bg-card shadow-lg ring-1 ring-black/5">
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-        <span className="text-sm font-semibold text-foreground">Saved searches</span>
+        <span className="text-sm font-semibold text-foreground">
+          Saved searches
+        </span>
         <button
           type="button"
           onClick={onClose}
@@ -381,10 +397,16 @@ function SavedSearchesPanel({
       ) : (
         <ul className="max-h-64 overflow-y-auto py-1">
           {searches.map((s) => (
-            <li key={s.id} className="flex items-center gap-2 px-3 py-2 hover:bg-accent">
+            <li
+              key={s.id}
+              className="flex items-center gap-2 px-3 py-2 hover:bg-accent"
+            >
               <button
                 type="button"
-                onClick={() => { onLoad(s.filters); onClose(); }}
+                onClick={() => {
+                  onLoad(s.filters);
+                  onClose();
+                }}
                 className="flex-1 text-left text-sm text-foreground truncate focus:outline-none focus:underline"
               >
                 {s.label}
@@ -442,14 +464,16 @@ export function AdvancedContractSearch() {
         setShowSavedSearches(false);
       }
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, [showSavedSearches]);
 
   // Sync filters → URL (replaceState to avoid polluting history on every keystroke).
   useEffect(() => {
     const params = filtersToUrlParams(filters);
-    const newUrl = params.toString() ? `?${params.toString()}` : window.location.pathname;
+    const newUrl = params.toString()
+      ? `?${params.toString()}`
+      : window.location.pathname;
     router.replace(newUrl, { scroll: false });
   }, [filters, router]);
 
@@ -465,12 +489,14 @@ export function AdvancedContractSearch() {
   // For non-query filter changes we update debounced immediately.
   const updateFilters = useCallback((patch: Partial<AdvancedSearchFilters>) => {
     setFilters((prev) => ({ ...prev, ...patch, page: 1 }));
-    setDebouncedQuery((prev) => ('query' in patch ? (patch.query ?? '') : prev));
+    setDebouncedQuery((prev) =>
+      "query" in patch ? (patch.query ?? "") : prev,
+    );
   }, []);
 
   const clearAllFilters = useCallback(() => {
     setFilters(DEFAULT_FILTERS);
-    setDebouncedQuery('');
+    setDebouncedQuery("");
   }, []);
 
   // Build effective search params (uses debouncedQuery for text).
@@ -484,7 +510,7 @@ export function AdvancedContractSearch() {
   );
 
   const { data, isFetching, isPending } = useQuery({
-    queryKey: ['contracts', apiParams],
+    queryKey: ["contracts", apiParams],
     queryFn: () => api.getContracts(apiParams),
     placeholderData: (prev) => prev,
     staleTime: 30_000,
@@ -515,8 +541,8 @@ export function AdvancedContractSearch() {
     );
     if (filters.verified_only) {
       chips.push({
-        id: 'verified',
-        label: 'Verified only',
+        id: "verified",
+        label: "Verified only",
         onRemove: () => updateFilters({ verified_only: false }),
       });
     }
@@ -530,15 +556,18 @@ export function AdvancedContractSearch() {
     if (filters.query) parts.push(`"${filters.query}"`);
     filters.categories.forEach((c) => parts.push(c));
     filters.networks.forEach((n) => parts.push(n));
-    if (filters.verified_only) parts.push('verified');
+    if (filters.verified_only) parts.push("verified");
 
     const newSearch: SavedSearch = {
       id: Date.now().toString(),
-      label: parts.join(' · ') || 'Search',
+      label: parts.join(" · ") || "Search",
       filters,
       savedAt: Date.now(),
     };
-    const updated = [newSearch, ...savedSearches.filter((s) => s.label !== newSearch.label)];
+    const updated = [
+      newSearch,
+      ...savedSearches.filter((s) => s.label !== newSearch.label),
+    ];
     setSavedSearches(updated);
     persistSavedSearches(updated);
   }
@@ -554,12 +583,14 @@ export function AdvancedContractSearch() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-
         {/* ── Header ── */}
         <header className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">Contract Search</h1>
+          <h1 className="text-2xl font-bold text-foreground">
+            Contract Search
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Search and filter Soroban smart contracts by network, category, and more.
+            Search and filter Soroban smart contracts by network, category, and
+            more.
           </p>
         </header>
 
@@ -614,14 +645,18 @@ export function AdvancedContractSearch() {
           id="filter-controls"
           role="group"
           aria-label="Search filters"
-          className={`mb-4 flex flex-wrap items-center gap-2 ${showMobileFilters ? 'flex' : 'hidden sm:flex'}`}
+          className={`mb-4 flex flex-wrap items-center gap-2 ${showMobileFilters ? "flex" : "hidden sm:flex"}`}
         >
           <MultiSelectDropdown
             id="network-filter"
             label="Network"
             options={NETWORK_OPTIONS}
             selected={filters.networks}
-            onToggle={(v) => updateFilters({ networks: toggle(filters.networks, v as Network) })}
+            onToggle={(v) =>
+              updateFilters({
+                networks: toggle(filters.networks, v as Network),
+              })
+            }
             onClear={() => updateFilters({ networks: [] })}
           />
 
@@ -630,7 +665,9 @@ export function AdvancedContractSearch() {
             label="Category"
             options={CATEGORY_OPTIONS.map((c) => ({ value: c, label: c }))}
             selected={filters.categories}
-            onToggle={(v) => updateFilters({ categories: toggle(filters.categories, v) })}
+            onToggle={(v) =>
+              updateFilters({ categories: toggle(filters.categories, v) })
+            }
             onClear={() => updateFilters({ categories: [] })}
           />
 
@@ -638,7 +675,9 @@ export function AdvancedContractSearch() {
             <input
               type="checkbox"
               checked={filters.verified_only}
-              onChange={(e) => updateFilters({ verified_only: e.target.checked })}
+              onChange={(e) =>
+                updateFilters({ verified_only: e.target.checked })
+              }
               className="h-3.5 w-3.5 accent-primary"
               aria-label="Show verified contracts only"
             />
@@ -669,7 +708,10 @@ export function AdvancedContractSearch() {
               {showSavedSearches && (
                 <SavedSearchesPanel
                   searches={savedSearches}
-                  onLoad={(f) => { setFilters(f); setDebouncedQuery(f.query); }}
+                  onLoad={(f) => {
+                    setFilters(f);
+                    setDebouncedQuery(f.query);
+                  }}
                   onDelete={handleDeleteSavedSearch}
                   onClose={() => setShowSavedSearches(false)}
                 />
@@ -696,7 +738,11 @@ export function AdvancedContractSearch() {
             className="mb-4 flex flex-wrap items-center gap-2"
           >
             {filterChips.map((chip) => (
-              <FilterChip key={chip.id} label={chip.label} onRemove={chip.onRemove} />
+              <FilterChip
+                key={chip.id}
+                label={chip.label}
+                onRemove={chip.onRemove}
+              />
             ))}
             <button
               type="button"
@@ -716,8 +762,8 @@ export function AdvancedContractSearch() {
             className="mb-4 text-sm text-muted-foreground"
           >
             {total === 0
-              ? 'No contracts found'
-              : `Showing ${contracts.length} of ${total.toLocaleString()} contract${total === 1 ? '' : 's'}`}
+              ? "No contracts found"
+              : `Showing ${contracts.length} of ${total.toLocaleString()} contract${total === 1 ? "" : "s"}`}
           </p>
         )}
 

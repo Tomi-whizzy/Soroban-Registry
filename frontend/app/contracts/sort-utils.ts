@@ -1,25 +1,27 @@
-import type { Contract } from '@/lib/api';
+import type { Contract } from "@/lib/api";
 
-export type SortBy = 'created_at' | 'updated_at' | 'popularity' | 'relevance';
-export type SortOrder = 'asc' | 'desc';
+export type SortBy = "created_at" | "updated_at" | "popularity" | "relevance";
+export type SortOrder = "asc" | "desc";
 
 export interface SortPreference {
   sort_by: SortBy;
   sort_order: SortOrder;
 }
 
-export const CONTRACT_SORT_PREFERENCE_KEY = 'contracts-sort-preference';
+export const CONTRACT_SORT_PREFERENCE_KEY = "contracts-sort-preference";
 
 export const DEFAULT_SORT_PREFERENCE: SortPreference = {
-  sort_by: 'created_at',
-  sort_order: 'desc',
+  sort_by: "created_at",
+  sort_order: "desc",
 };
 
 function isSortBy(value: string | null | undefined): value is SortBy {
-  return value === 'created_at'
-    || value === 'updated_at'
-    || value === 'popularity'
-    || value === 'relevance';
+  return (
+    value === "created_at" ||
+    value === "updated_at" ||
+    value === "popularity" ||
+    value === "relevance"
+  );
 }
 
 export function normalizeSortBy(
@@ -27,16 +29,20 @@ export function normalizeSortBy(
   hasQuery = false,
 ): SortBy {
   if (isSortBy(value)) return value;
-  return hasQuery ? 'relevance' : DEFAULT_SORT_PREFERENCE.sort_by;
+  return hasQuery ? "relevance" : DEFAULT_SORT_PREFERENCE.sort_by;
 }
 
-export function normalizeSortOrder(value: string | null | undefined): SortOrder {
-  return value === 'asc' || value === 'desc'
+export function normalizeSortOrder(
+  value: string | null | undefined,
+): SortOrder {
+  return value === "asc" || value === "desc"
     ? value
     : DEFAULT_SORT_PREFERENCE.sort_order;
 }
 
-export function readStoredSortPreference(storage?: Pick<Storage, 'getItem'> | null): SortPreference | null {
+export function readStoredSortPreference(
+  storage?: Pick<Storage, "getItem"> | null,
+): SortPreference | null {
   if (!storage) return null;
 
   try {
@@ -57,7 +63,7 @@ export function readStoredSortPreference(storage?: Pick<Storage, 'getItem'> | nu
 
 export function persistSortPreference(
   preference: SortPreference,
-  storage?: Pick<Storage, 'setItem'> | null,
+  storage?: Pick<Storage, "setItem"> | null,
 ): void {
   if (!storage) return;
 
@@ -66,12 +72,12 @@ export function persistSortPreference(
 
 export function resolveInitialSortPreference(
   searchParams: URLSearchParams,
-  storage?: Pick<Storage, 'getItem'> | null,
+  storage?: Pick<Storage, "getItem"> | null,
 ): SortPreference {
-  const query = searchParams.get('query') || searchParams.get('q') || '';
+  const query = searchParams.get("query") || searchParams.get("q") || "";
   const stored = readStoredSortPreference(storage);
-  const urlSortBy = searchParams.get('sort_by');
-  const urlSortOrder = searchParams.get('sort_order');
+  const urlSortBy = searchParams.get("sort_by");
+  const urlSortOrder = searchParams.get("sort_order");
 
   return {
     sort_by: normalizeSortBy(urlSortBy ?? stored?.sort_by, Boolean(query)),
@@ -82,7 +88,7 @@ export function resolveInitialSortPreference(
 function getNumericValue(contract: Contract, keys: string[]): number {
   for (const key of keys) {
     const value = (contract as Contract & Record<string, unknown>)[key];
-    if (typeof value === 'number' && Number.isFinite(value)) {
+    if (typeof value === "number" && Number.isFinite(value)) {
       return value;
     }
   }
@@ -91,34 +97,45 @@ function getNumericValue(contract: Contract, keys: string[]): number {
 }
 
 function compareText(a: string, b: string) {
-  return a.localeCompare(b, undefined, { sensitivity: 'base' });
+  return a.localeCompare(b, undefined, { sensitivity: "base" });
 }
 
 export function sortContracts(
   contracts: Contract[],
   preference: SortPreference,
 ): Contract[] {
-  const direction = preference.sort_order === 'asc' ? 1 : -1;
+  const direction = preference.sort_order === "asc" ? 1 : -1;
 
   return [...contracts].sort((a, b) => {
     let comparison = 0;
 
     switch (preference.sort_by) {
-      case 'popularity':
-        comparison = getNumericValue(a, ['popularity_score', 'interaction_count', 'deployment_count'])
-          - getNumericValue(b, ['popularity_score', 'interaction_count', 'deployment_count']);
-        break;
-      case 'updated_at':
-        comparison = new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
-        break;
-      case 'relevance':
+      case "popularity":
         comparison =
-          getNumericValue(a, ['relevance_score', 'popularity_score'])
-          - getNumericValue(b, ['relevance_score', 'popularity_score']);
+          getNumericValue(a, [
+            "popularity_score",
+            "interaction_count",
+            "deployment_count",
+          ]) -
+          getNumericValue(b, [
+            "popularity_score",
+            "interaction_count",
+            "deployment_count",
+          ]);
         break;
-      case 'created_at':
+      case "updated_at":
+        comparison =
+          new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
+        break;
+      case "relevance":
+        comparison =
+          getNumericValue(a, ["relevance_score", "popularity_score"]) -
+          getNumericValue(b, ["relevance_score", "popularity_score"]);
+        break;
+      case "created_at":
       default:
-        comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        comparison =
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
         break;
     }
 

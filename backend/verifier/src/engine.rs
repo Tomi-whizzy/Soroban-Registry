@@ -4,12 +4,12 @@
 //! by a `tokio::sync::Semaphore` so that at most `max_concurrent` verifications
 //! run simultaneously. Progress is tracked via an `Arc<AtomicUsize>`.
 
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use tokio::sync::Semaphore;
-use serde_json::Value;
 use crate::{verify_contract, VerificationResult};
+use serde_json::Value;
 use shared::RegistryError;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
+use tokio::sync::Semaphore;
 
 /// A bounded concurrent verification engine.
 ///
@@ -69,12 +69,22 @@ impl VerificationEngine {
         self.queued.fetch_sub(1, Ordering::Relaxed);
         self.active.fetch_add(1, Ordering::Relaxed);
 
-        let result = verify_contract(source_code, deployed_wasm_hash, compiler_version, build_params).await;
+        let result = verify_contract(
+            source_code,
+            deployed_wasm_hash,
+            compiler_version,
+            build_params,
+        )
+        .await;
 
         self.active.fetch_sub(1, Ordering::Relaxed);
         match &result {
-            Ok(_) => { self.completed.fetch_add(1, Ordering::Relaxed); }
-            Err(_) => { self.failed.fetch_add(1, Ordering::Relaxed); }
+            Ok(_) => {
+                self.completed.fetch_add(1, Ordering::Relaxed);
+            }
+            Err(_) => {
+                self.failed.fetch_add(1, Ordering::Relaxed);
+            }
         }
 
         result
@@ -94,7 +104,12 @@ impl VerificationEngine {
             let engine = self.clone();
             let handle = tokio::spawn(async move {
                 engine
-                    .verify(&job.source_code, &job.deployed_wasm_hash, job.compiler_version.as_deref(), job.build_params.as_ref())
+                    .verify(
+                        &job.source_code,
+                        &job.deployed_wasm_hash,
+                        job.compiler_version.as_deref(),
+                        job.build_params.as_ref(),
+                    )
                     .await
             });
             handles.push(handle);
@@ -145,8 +160,8 @@ pub struct EngineProgress {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
     use crate::hash_wasm;
+    use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 
     fn wasm_source(bytes: &[u8]) -> String {
         format!("wasm_base64:{}", BASE64.encode(bytes))
@@ -157,7 +172,10 @@ mod tests {
         let engine = VerificationEngine::new(5);
         let wasm = b"test-wasm-bytes";
         let hash = hash_wasm(wasm);
-        let result = engine.verify(&wasm_source(wasm), &hash, None, None).await.unwrap();
+        let result = engine
+            .verify(&wasm_source(wasm), &hash, None, None)
+            .await
+            .unwrap();
         assert!(result.verified);
     }
 
@@ -166,7 +184,10 @@ mod tests {
         let engine = VerificationEngine::new(5);
         let wasm = b"counter-test";
         let hash = hash_wasm(wasm);
-        engine.verify(&wasm_source(wasm), &hash, None, None).await.unwrap();
+        engine
+            .verify(&wasm_source(wasm), &hash, None, None)
+            .await
+            .unwrap();
         let p = engine.progress();
         assert_eq!(p.active, 0);
         assert_eq!(p.queued, 0);
@@ -178,7 +199,9 @@ mod tests {
     async fn failed_job_increments_failed_counter() {
         let engine = VerificationEngine::new(5);
         // invalid hash triggers an error
-        let _ = engine.verify("fn main(){}", "not-a-valid-hash", None, None).await;
+        let _ = engine
+            .verify("fn main(){}", "not-a-valid-hash", None, None)
+            .await;
         let p = engine.progress();
         assert_eq!(p.failed, 1);
         assert_eq!(p.completed, 0);
@@ -203,7 +226,10 @@ mod tests {
         let results = engine.verify_batch(jobs).await;
         assert_eq!(results.len(), 5);
         for r in &results {
-            assert!(r.as_ref().unwrap().verified, "each job should verify correctly");
+            assert!(
+                r.as_ref().unwrap().verified,
+                "each job should verify correctly"
+            );
         }
         let p = engine.progress();
         assert_eq!(p.completed, 5);

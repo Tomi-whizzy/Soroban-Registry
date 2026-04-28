@@ -1,19 +1,17 @@
 #[cfg(feature = "openapi")]
 use crate::openapi;
 use crate::{
-    ai::handlers as ai_handlers,
-    state_monitor::handlers as state_monitor_handlers,
-    ab_test_handlers, analytics_handlers, auth, auth_handlers, batch_verify_handlers,
-    client_observability_handlers,
-    breaking_changes, canary_handlers, category_handlers, clone_federation_handlers,
-    compatibility_testing_handlers, contract_events, custom_metrics_handlers, deprecation_handlers,
-    error_logging, formal_verification_handlers, gas_estimation_handlers, governance_handlers,
+    ab_test_handlers, ai::handlers as ai_handlers, analytics_handlers, auth, auth_handlers,
+    batch_verify_handlers, breaking_changes, canary_handlers, category_handlers,
+    client_observability_handlers, clone_federation_handlers, compatibility_testing_handlers,
+    contract_events, custom_metrics_handlers, deprecation_handlers, error_logging,
+    formal_verification_handlers, gas_estimation_handlers, governance_handlers,
     graph_analysis_handlers, handlers, interoperability_handlers, metrics_handler,
     migration_handlers, mutation_testing_handlers, org_handlers, patch_handlers,
     performance_handlers, plugin_marketplace_handlers, publisher_verification_handlers,
     recommendation_handlers, resource_handlers, security_scan_handlers, similarity_handlers,
-    simulation_handlers, state::AppState, stats, subscription_handlers, verification_handlers, 
-    websocket, zk_proof_handlers,
+    simulation_handlers, state::AppState, state_monitor::handlers as state_monitor_handlers, stats,
+    subscription_handlers, verification_handlers, websocket, zk_proof_handlers,
 };
 
 use axum::{
@@ -107,7 +105,10 @@ fn release_notes_routes() -> Router<AppState> {
 pub fn observability_routes() -> Router<AppState> {
     Router::new()
         .route("/metrics", get(metrics_handler::metrics_endpoint))
-    .route("/api/observability/client_breaker", post(client_observability_handlers::report_client_breaker))
+        .route(
+            "/api/observability/client_breaker",
+            post(client_observability_handlers::report_client_breaker),
+        )
         .route("/api/errors/report", post(error_logging::report_error))
         .route("/api/errors/dashboard", get(error_logging::error_dashboard))
 }
@@ -142,10 +143,22 @@ pub fn contract_routes() -> Router<AppState> {
             get(handlers::list_contracts).post(handlers::publish_contract),
         )
         .route("/api/contracts/tags", get(handlers::list_tags))
-        .route("/api/contracts/export", post(handlers::export_contract_metadata))
-        .route("/contracts/export", post(handlers::export_contract_metadata))
-        .route("/api/contracts/export/:job_id", get(handlers::get_contract_export_status))
-        .route("/contracts/export/:job_id", get(handlers::get_contract_export_status))
+        .route(
+            "/api/contracts/export",
+            post(handlers::export_contract_metadata),
+        )
+        .route(
+            "/contracts/export",
+            post(handlers::export_contract_metadata),
+        )
+        .route(
+            "/api/contracts/export/:job_id",
+            get(handlers::get_contract_export_status),
+        )
+        .route(
+            "/contracts/export/:job_id",
+            get(handlers::get_contract_export_status),
+        )
         .route(
             "/api/contracts/export/:job_id/download",
             get(handlers::download_contract_export),
@@ -188,8 +201,7 @@ pub fn contract_routes() -> Router<AppState> {
         )
         .route(
             "/api/contracts/:id/abi",
-            get(handlers::get_contract_abi)
-                .post(abi_versioning_handlers::publish_abi),
+            get(handlers::get_contract_abi).post(abi_versioning_handlers::publish_abi),
         )
         .route(
             "/api/contracts/:id/abi/:version",
@@ -223,7 +235,10 @@ pub fn contract_routes() -> Router<AppState> {
             "/api/contracts/:id/changelog",
             get(handlers::get_contract_changelog),
         )
-        .route("/contracts/:id/changelog", get(handlers::get_contract_changelog))
+        .route(
+            "/contracts/:id/changelog",
+            get(handlers::get_contract_changelog),
+        )
         .route(
             "/api/contracts/breaking-changes",
             get(breaking_changes::get_breaking_changes),
@@ -319,10 +334,7 @@ pub fn contract_routes() -> Router<AppState> {
             post(state_monitor_handlers::resolve_anomaly_handler),
         )
         // PostgreSQL Full-Text Search
-        .route(
-            "/api/search",
-            get(search_postgres::fulltext_search_handler),
-        )
+        .route("/api/search", get(search_postgres::fulltext_search_handler))
         // State get/update (existing)
         .route(
             "/api/contracts/:id/state/:key",
@@ -375,9 +387,18 @@ pub fn contract_routes() -> Router<AppState> {
             "/api/contracts/:id/related",
             get(recommendation_handlers::get_contract_recommendations),
         )
-        .route("/contracts/:id/recommendations", get(recommendation_handlers::get_contract_recommendations))
-        .route("/contracts/:id/related", get(recommendation_handlers::get_contract_recommendations))
-        .route("/contracts/:id/similar", get(similarity_handlers::get_similar_contracts))
+        .route(
+            "/contracts/:id/recommendations",
+            get(recommendation_handlers::get_contract_recommendations),
+        )
+        .route(
+            "/contracts/:id/related",
+            get(recommendation_handlers::get_contract_recommendations),
+        )
+        .route(
+            "/contracts/:id/similar",
+            get(similarity_handlers::get_similar_contracts),
+        )
         .route("/api/contracts/verify", post(handlers::verify_contract))
         .route(
             "/api/contracts/batch-verify",

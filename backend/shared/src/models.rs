@@ -1215,35 +1215,6 @@ pub struct AdvancedSearchRequest {
     pub sort_order: Option<SortOrder>,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::{ContractSearchParams, Network};
-
-    #[test]
-    fn parses_comma_separated_networks() {
-        let params: ContractSearchParams =
-            serde_json::from_str(r#"{"networks":"mainnet,testnet"}"#)
-                .expect("query params should deserialize");
-
-        assert_eq!(
-            params.networks,
-            Some(vec![Network::Mainnet, Network::Testnet])
-        );
-    }
-
-    #[test]
-    fn parses_sequence_networks() {
-        let params: ContractSearchParams =
-            serde_json::from_str(r#"{"networks":["mainnet","futurenet"]}"#)
-                .expect("query params should deserialize");
-
-        assert_eq!(
-            params.networks,
-            Some(vec![Network::Mainnet, Network::Futurenet])
-        );
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, utoipa::ToSchema)]
 pub struct FavoriteSearch {
     pub id: Uuid,
@@ -4457,7 +4428,8 @@ mod tests {
         let json = serde_json::to_string(&contract).expect("Failed to serialize contract");
         assert!(json.contains("\"usage_count\":42"));
 
-        let deserialized: Contract = serde_json::from_str(&json).expect("Failed to deserialize contract");
+        let deserialized: Contract =
+            serde_json::from_str(&json).expect("Failed to deserialize contract");
         assert_eq!(deserialized.usage_count, 42);
     }
 
@@ -4496,7 +4468,7 @@ mod tests {
 
         let contract: Contract = serde_json::from_str(json_without_usage_count)
             .expect("Failed to deserialize contract without usage_count");
-        
+
         // usage_count should default to 0 due to #[serde(default)]
         assert_eq!(contract.usage_count, 0);
         assert_eq!(contract.name, "Test Contract");
@@ -4538,7 +4510,7 @@ mod tests {
 
         let contract: Contract = serde_json::from_str(json_with_zero_usage)
             .expect("Failed to deserialize contract with zero usage_count");
-        
+
         assert_eq!(contract.usage_count, 0);
     }
 }

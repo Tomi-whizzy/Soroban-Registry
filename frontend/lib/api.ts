@@ -22,13 +22,13 @@ import {
   extractErrorData,
   createApiError,
 } from "./errors";
-import { resilientCall } from './resilience';
-import type { 
-  Network, 
-  NetworkStatus, 
-  NetworkEndpoints, 
-  NetworkInfo, 
-  NetworkListResponse, 
+import { resilientCall } from "./resilience";
+import type {
+  Network,
+  NetworkStatus,
+  NetworkEndpoints,
+  NetworkInfo,
+  NetworkListResponse,
   NetworkConfig,
   Contract,
   ContractGetResponse,
@@ -85,10 +85,9 @@ import type {
   GenerateReleaseNotesRequest,
   UpdateReleaseNotesRequest,
   PublishReleaseNotesRequest,
-  DeprecationInfo
+  DeprecationInfo,
 } from "../types";
 import type { VerificationLevel } from "../types/verification";
-
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === "true";
@@ -269,9 +268,13 @@ async function handleApiCall<T>(
 ): Promise<T> {
   // Wrap the API call with a circuit breaker + retries
   try {
-    const rawResponse = await resilientCall(endpoint, async () => {
-      return apiCall();
-    }, { endpoint });
+    const rawResponse = await resilientCall(
+      endpoint,
+      async () => {
+        return apiCall();
+      },
+      { endpoint },
+    );
 
     const response = rawResponse as Response;
 
@@ -299,8 +302,11 @@ async function handleApiCall<T>(
     // Circuit open
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    if (error && error.name === 'CircuitOpenError') {
-      throw new NetworkError('Service temporarily unavailable (circuit open)', endpoint);
+    if (error && error.name === "CircuitOpenError") {
+      throw new NetworkError(
+        "Service temporarily unavailable (circuit open)",
+        endpoint,
+      );
     }
 
     // Handle network errors
@@ -395,16 +401,16 @@ export const api = {
       );
       try {
         // cache for fallback
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('soroban_cached_networks', JSON.stringify(resp));
+        if (typeof window !== "undefined") {
+          localStorage.setItem("soroban_cached_networks", JSON.stringify(resp));
         }
       } catch {}
       return resp;
     } catch (err) {
       // On network/circuit failures, fall back to cached networks if available
       try {
-        if (typeof window !== 'undefined') {
-          const cached = localStorage.getItem('soroban_cached_networks');
+        if (typeof window !== "undefined") {
+          const cached = localStorage.getItem("soroban_cached_networks");
           if (cached) return JSON.parse(cached) as NetworkListResponse;
         }
       } catch {}
@@ -479,7 +485,9 @@ export const api = {
           }
 
           if (params?.favorites_only && params.favorites_list) {
-            filtered = filtered.filter((c) => params.favorites_list!.includes(c.id));
+            filtered = filtered.filter((c) =>
+              params.favorites_list!.includes(c.id),
+            );
           }
 
           if (params?.date_from) {
@@ -549,13 +557,18 @@ export const api = {
 
     const queryParams = new URLSearchParams();
     if (params?.query) queryParams.append("query", params.query);
-    if (params?.contract_id) queryParams.append("contract_id", params.contract_id);
+    if (params?.contract_id)
+      queryParams.append("contract_id", params.contract_id);
     if (params?.network) queryParams.append("network", params.network);
-    params?.networks?.forEach((network) => queryParams.append("networks", network));
+    params?.networks?.forEach((network) =>
+      queryParams.append("networks", network),
+    );
     if (params?.verified_only !== undefined)
       queryParams.append("verified_only", String(params.verified_only));
     if (params?.category) queryParams.append("category", params.category);
-    params?.categories?.forEach((category) => queryParams.append("categories", category));
+    params?.categories?.forEach((category) =>
+      queryParams.append("categories", category),
+    );
 
     try {
       const resp = await handleApiCall<PaginatedResponse<Contract>>(
@@ -565,10 +578,14 @@ export const api = {
 
       // Normalize legacy field names from older backend responses
       const raw = resp as unknown as Record<string, unknown>;
-      const normalized = { ...resp } as PaginatedResponse<Contract> & Record<string, unknown>;
+      const normalized = { ...resp } as PaginatedResponse<Contract> &
+        Record<string, unknown>;
       try {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('soroban_cached_contracts', JSON.stringify(normalized));
+        if (typeof window !== "undefined") {
+          localStorage.setItem(
+            "soroban_cached_contracts",
+            JSON.stringify(normalized),
+          );
         }
       } catch {}
       if (Array.isArray(raw.contracts) && !Array.isArray(raw.items)) {
@@ -581,8 +598,8 @@ export const api = {
     } catch (err) {
       // On failure, attempt to return cached contracts list if available
       try {
-        if (typeof window !== 'undefined') {
-          const cached = localStorage.getItem('soroban_cached_contracts');
+        if (typeof window !== "undefined") {
+          const cached = localStorage.getItem("soroban_cached_contracts");
           if (cached) return JSON.parse(cached) as PaginatedResponse<Contract>;
         }
       } catch {}

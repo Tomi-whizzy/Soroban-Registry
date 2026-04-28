@@ -1,21 +1,23 @@
 #![allow(unused_variables)]
 
-mod analyze;
 mod analytics;
+mod analyze;
 mod audit_command;
 mod backup;
-mod batch_register;
 mod batch_ops;
+mod batch_register;
 mod batch_verify;
 mod cicd;
 mod codegen;
 mod commands;
+mod compare;
 mod config;
 mod contract_verify;
 mod contracts;
 mod conversions;
 mod coverage;
 mod dashboard;
+mod deploy;
 mod events;
 mod export;
 mod formal_verification;
@@ -30,6 +32,7 @@ mod net;
 mod network;
 mod package_signing;
 mod patch;
+mod plugins;
 mod profiler;
 mod release_notes;
 mod shell;
@@ -37,15 +40,12 @@ mod sla;
 mod table_format;
 mod test_framework;
 mod track_deployment;
+mod upgrade;
+mod user_config;
+mod verification;
+mod version;
 mod webhook;
 mod wizard;
-mod plugins;
-mod deploy;
-mod upgrade;
-mod compare;
-mod verification;
-mod user_config;
-mod version;
 
 use anyhow::Result;
 use clap::{ArgAction, Parser, Subcommand};
@@ -203,20 +203,54 @@ pub enum Commands {
         id: String,
     },
 
+    /// Search for contracts in the registry
+    Search {
+        /// Search query
+        query: String,
+
+        /// Only show verified contracts
+        #[arg(long)]
+        verified_only: bool,
+
+        /// Filter by network (comma-separated: mainnet,testnet,futurenet)
+        #[arg(long)]
+        network: Option<String>,
+
+        /// Filter by category
+        #[arg(long)]
+        category: Option<String>,
+
+        /// Sort by (name, created, updated, relevance)
+        #[arg(long)]
+        sort: Option<String>,
+
+        /// Maximum results to return
+        #[arg(long, default_value = "20")]
+        limit: usize,
+
+        /// Results offset
+        #[arg(long, default_value = "0")]
+        offset: usize,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+
     /// Compare multiple contracts
     Compare {
         /// Contract IDs to compare (2 to 4 contracts)
         #[arg(required = true, num_args = 2..=4)]
         ids: Vec<String>,
-        
+
         /// Output detailed comparison as JSON
         #[arg(long)]
         json: bool,
-        
+
         /// Export comparison report to a file (csv or json)
         #[arg(long)]
         export: Option<String>,
-        
+
         /// Export format (csv or json). Derived from file extension if not provided.
         #[arg(long)]
         format: Option<String>,
@@ -978,15 +1012,10 @@ pub enum CicdCommands {
 pub enum ConfigSubcommands {
     /// Get a user config value by key
     #[command(name = "get")]
-    UserGet {
-        key: String,
-    },
+    UserGet { key: String },
     /// Set a user config value by key
     #[command(name = "set")]
-    UserSet {
-        key: String,
-        value: String,
-    },
+    UserSet { key: String, value: String },
     /// List all persisted user config values
     #[command(name = "list")]
     UserList {},
@@ -1430,7 +1459,7 @@ pub enum ContractCommands {
         #[arg(long)]
         json: bool,
     },
-    
+
     /// Display detailed information about a contract
     ///
     /// Usage: soroban-registry contract details <address> --network <network> [--json]
@@ -1644,7 +1673,9 @@ async fn main() -> Result<()> {
 
 pub async fn handle_command(cli: Cli) -> Result<()> {
     match cli.command {
-        Commands::Repl { network: shell_network } => shell::run(&cli.api_url, shell_network).await,
+        Commands::Repl {
+            network: shell_network,
+        } => shell::run(&cli.api_url, shell_network).await,
         _ => {
             // ── Resolve network ───────────────────────────────────────────────────────
             let cfg_network = config::resolve_network(cli.network.clone())?;
@@ -1691,7 +1722,8 @@ pub async fn dispatch_command(
                 tx_hash.as_deref(),
                 wait_timeout,
                 json,
-            ).await?;
+            )
+            .await?;
         }
         Commands::Plugins { action } => match action {
             PluginCommands::List { json } => {
@@ -1706,7 +1738,10 @@ pub async fn dispatch_command(
                             })
                         })
                         .collect();
-                    println!("{}", serde_json::to_string_pretty(&serde_json::json!({ "plugins": out }))?);
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&serde_json::json!({ "plugins": out }))?
+                    );
                 } else {
                     if installed.is_empty() {
                         println!("{}", "No plugins installed.".yellow());
@@ -1767,9 +1802,13 @@ pub async fn dispatch_command(
                 plugins::uninstall(&name, version.as_deref())?;
             }
             PluginCommands::Run { command, args } => {
-                let result =
-                    plugins::run_installed_command(&cli.api_url, &network.to_string(), &command, args)
-                        .await?;
+                let result = plugins::run_installed_command(
+                    &cli.api_url,
+                    &network.to_string(),
+                    &command,
+                    args,
+                )
+                .await?;
                 print!("{}", result.stdout);
             }
             PluginCommands::Config { action } => match action {
@@ -1797,7 +1836,9 @@ pub async fn dispatch_command(
             }
             let cmd = args[0].clone();
             let rest = args.into_iter().skip(1).collect::<Vec<_>>();
-            let result = plugins::run_installed_command(&cli.api_url, &network.to_string(), &cmd, rest).await?;
+            let result =
+                plugins::run_installed_command(&cli.api_url, &network.to_string(), &cmd, rest)
+                    .await?;
             print!("{}", result.stdout);
         }
         Commands::Search {
@@ -1838,8 +1879,20 @@ pub async fn dispatch_command(
         Commands::Info { id } => {
             commands::contract_info(&cli.api_url, &id).await?;
         }
-        Commands::Compare { ids, json, export, format } => {
-            compare::run(&cli.api_url, ids, json, export.as_deref(), format.as_deref()).await?;
+        Commands::Compare {
+            ids,
+            json,
+            export,
+            format,
+        } => {
+            compare::run(
+                &cli.api_url,
+                ids,
+                json,
+                export.as_deref(),
+                format.as_deref(),
+            )
+            .await?;
         }
         Commands::Analytics {
             query,
@@ -1858,6 +1911,14 @@ pub async fn dispatch_command(
                 export.as_deref(),
             )
             .await?;
+        }
+        Commands::Stats {
+            timeframe,
+            format,
+            output,
+        } => {
+            log::debug!("Command: stats | timeframe={} format={}", timeframe, format);
+            commands::stats(&cli.api_url, &timeframe, &format, output.as_deref()).await?;
         }
         Commands::Version {
             check_updates,
@@ -2046,9 +2107,22 @@ pub async fn dispatch_command(
             let network = cli.network.as_deref();
             log::debug!(
                 "Command: import | file={} format={:?} output_dir={} validate={} dry_run={}",
-                file, format, output_dir, validate, dry_run
+                file,
+                format,
+                output_dir,
+                validate,
+                dry_run
             );
-            crate::import::run(&cli.api_url, &file, format.as_deref(), network, &output_dir, validate, dry_run).await?;
+            crate::import::run(
+                &cli.api_url,
+                &file,
+                format.as_deref(),
+                network,
+                &output_dir,
+                validate,
+                dry_run,
+            )
+            .await?;
         }
         Commands::Doc {
             contract_path,
@@ -2084,27 +2158,64 @@ pub async fn dispatch_command(
                 upgrade::version::list(&contract_id)?;
             }
             VersionCommands::Bump { current, level } => {
-                log::debug!("Command: version bump | current={} level={}", current, level);
+                log::debug!(
+                    "Command: version bump | current={} level={}",
+                    current,
+                    level
+                );
                 let next = upgrade::version::bump(&current, &level)?;
                 println!("Next version: {}", next.green().bold());
             }
         },
         Commands::Upgrade { action } => match action {
             UpgradeSubcommands::Analyze { old_wasm, new_wasm } => {
-                log::debug!("Command: upgrade analyze | old={} new={}", old_wasm, new_wasm);
+                log::debug!(
+                    "Command: upgrade analyze | old={} new={}",
+                    old_wasm,
+                    new_wasm
+                );
                 upgrade::manager::analyze(&old_wasm, &new_wasm).await?;
             }
-            UpgradeSubcommands::Apply { contract_id, new_wasm } => {
-                log::debug!("Command: upgrade apply | contract_id={} new={}", contract_id, new_wasm);
+            UpgradeSubcommands::Apply {
+                contract_id,
+                new_wasm,
+            } => {
+                log::debug!(
+                    "Command: upgrade apply | contract_id={} new={}",
+                    contract_id,
+                    new_wasm
+                );
                 upgrade::manager::apply(&contract_id, &new_wasm).await?;
             }
-            UpgradeSubcommands::Rollback { contract_id, version } => {
-                log::debug!("Command: upgrade rollback | contract_id={} version={}", contract_id, version);
+            UpgradeSubcommands::Rollback {
+                contract_id,
+                version,
+            } => {
+                log::debug!(
+                    "Command: upgrade rollback | contract_id={} version={}",
+                    contract_id,
+                    version
+                );
                 upgrade::manager::rollback(&contract_id, &version).await?;
             }
-            UpgradeSubcommands::Generate { old_id, new_id, language, output } => {
-                log::debug!("Command: upgrade generate | old={} new={} lang={}", old_id, new_id, language);
-                crate::migration::generate_template(&old_id, &new_id, &language, output.as_deref())?;
+            UpgradeSubcommands::Generate {
+                old_id,
+                new_id,
+                language,
+                output,
+            } => {
+                log::debug!(
+                    "Command: upgrade generate | old={} new={} lang={}",
+                    old_id,
+                    new_id,
+                    language
+                );
+                crate::migration::generate_template(
+                    &old_id,
+                    &new_id,
+                    &language,
+                    output.as_deref(),
+                )?;
             }
         },
         Commands::Wizard {} => {
@@ -2564,8 +2675,24 @@ pub async fn dispatch_command(
             path,
             notes,
         } => {
-            log::debug!("Command: verify | id={:?} submit={} check={}", id, submit, check);
-            verification::run(&cli.api_url, id, submit, check, history, level, json, &path, notes).await?;
+            log::debug!(
+                "Command: verify | id={:?} submit={} check={}",
+                id,
+                submit,
+                check
+            );
+            verification::run(
+                &cli.api_url,
+                id,
+                submit,
+                check,
+                history,
+                level,
+                json,
+                &path,
+                notes,
+            )
+            .await?;
         }
         Commands::VerifyContract {
             wasm_path,

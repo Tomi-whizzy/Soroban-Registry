@@ -1,8 +1,8 @@
 use crate::state::AppState;
 use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
 use shared::models::Network;
+use sqlx::PgPool;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RegistryStats {
@@ -13,21 +13,21 @@ pub struct RegistryStats {
     pub verification_percentage: f64,
     pub total_categories: i64,
     pub total_networks: i64,
-    
+
     // Growth
     pub contracts_last_7d: i64,
     pub contracts_last_30d: i64,
     pub new_publishers_last_30d: i64,
-    
+
     // Top contracts
     pub top_contracts: Vec<TopContract>,
-    
+
     // Network breakdown
     pub network_stats: Vec<NetworkStats>,
-    
+
     // Category breakdown
     pub category_stats: Vec<CategoryStats>,
-    
+
     // Timestamp
     pub generated_at: chrono::DateTime<chrono::Utc>,
 }
@@ -72,7 +72,7 @@ pub async fn get_stats_handler(
     Query(params): Query<StatsQuery>,
 ) -> Result<Json<RegistryStats>, ApiError> {
     let timeframe = params.timeframe.as_deref().unwrap_or("all");
-    
+
     // Get basic counts
     let total_contracts: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM contracts")
         .fetch_one(&state.db)
@@ -84,10 +84,11 @@ pub async fn get_stats_handler(
         .await
         .map_err(|e| ApiError::internal_error("DB_ERROR", e.to_string()))?;
 
-    let verified_contracts: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM contracts WHERE is_verified = true")
-        .fetch_one(&state.db)
-        .await
-        .map_err(|e| ApiError::internal_error("DB_ERROR", e.to_string()))?;
+    let verified_contracts: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM contracts WHERE is_verified = true")
+            .fetch_one(&state.db)
+            .await
+            .map_err(|e| ApiError::internal_error("DB_ERROR", e.to_string()))?;
 
     let verification_percentage = if total_contracts > 0 {
         (verified_contracts as f64 / total_contracts as f64) * 100.0
@@ -96,7 +97,7 @@ pub async fn get_stats_handler(
     };
 
     let total_categories: i64 = sqlx::query_scalar(
-        "SELECT COUNT(DISTINCT category) FROM contracts WHERE category IS NOT NULL"
+        "SELECT COUNT(DISTINCT category) FROM contracts WHERE category IS NOT NULL",
     )
     .fetch_one(&state.db)
     .await
@@ -129,14 +130,16 @@ pub async fn get_stats_handler(
     let contracts_last_30d: i64 = if timeframe == "all" {
         total_contracts
     } else {
-        sqlx::query_scalar("SELECT COUNT(*) FROM contracts WHERE created_at > NOW() - INTERVAL '30 days'")
-            .fetch_one(&state.db)
-            .await
-            .unwrap_or(0)
+        sqlx::query_scalar(
+            "SELECT COUNT(*) FROM contracts WHERE created_at > NOW() - INTERVAL '30 days'",
+        )
+        .fetch_one(&state.db)
+        .await
+        .unwrap_or(0)
     };
 
     let new_publishers_last_30d: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM publishers WHERE created_at > NOW() - INTERVAL '30 days'"
+        "SELECT COUNT(*) FROM publishers WHERE created_at > NOW() - INTERVAL '30 days'",
     )
     .fetch_one(&state.db)
     .await
@@ -180,7 +183,7 @@ pub async fn get_stats_handler(
         FROM contracts
         GROUP BY network
         ORDER BY network
-        "#
+        "#,
     )
     .fetch_all(&state.db)
     .await
@@ -204,7 +207,7 @@ pub async fn get_stats_handler(
         GROUP BY category
         ORDER BY contract_count DESC
         LIMIT 20
-        "#
+        "#,
     )
     .fetch_all(&state.db)
     .await

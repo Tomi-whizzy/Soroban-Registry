@@ -69,7 +69,8 @@ pub async fn sign_package(
     let response = client
         .post(&url)
         .json(&payload)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to reach registry API")?;
 
     if !response.status().is_success() {
@@ -152,7 +153,8 @@ async fn verify_with_signature(
     let response = client
         .post(&url)
         .json(&payload)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to reach registry API")?;
 
     let status = response.status();
@@ -205,7 +207,8 @@ async fn verify_from_registry(
 
     let response = client
         .get(&url)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to reach registry API")?;
 
     if !response.status().is_success() {
@@ -302,7 +305,8 @@ pub async fn revoke_signature(
     let response = client
         .post(&url)
         .json(&payload)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to reach registry API")?;
 
     if !response.status().is_success() {
@@ -332,7 +336,8 @@ pub async fn get_chain_of_custody(api_url: &str, contract_id: &str) -> Result<()
 
     let response = client
         .get(&url)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to reach registry API")?;
 
     if !response.status().is_success() {
@@ -401,7 +406,8 @@ pub async fn get_transparency_log(
 
     let response = client
         .get(&url)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to reach registry API")?;
 
     if !response.status().is_success() {

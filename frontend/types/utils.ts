@@ -19,4 +19,5 @@ export interface ApiResponse<T> {
 export type Subset<T, K extends keyof T> = Pick<T, K>;
 
 /** Extract type of array elements */
-export type ElementType<T extends ReadonlyArray<unknown>> = T extends ReadonlyArray<infer Element> ? Element : never;
+export type ElementType<T extends ReadonlyArray<unknown>> =
+  T extends ReadonlyArray<infer Element> ? Element : never;

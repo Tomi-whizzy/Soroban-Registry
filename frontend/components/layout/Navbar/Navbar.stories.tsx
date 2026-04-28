@@ -1,11 +1,11 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import Navbar from './Navbar';
+import type { Meta, StoryObj } from "@storybook/react";
+import Navbar from "./Navbar";
 
 const meta: Meta<typeof Navbar> = {
-  title: 'Layout/Navbar',
+  title: "Layout/Navbar",
   component: Navbar,
   parameters: {
-    layout: 'fullscreen',
+    layout: "fullscreen",
   },
 };
 

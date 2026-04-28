@@ -1,7 +1,15 @@
-import { ArrowDown, ArrowUp, Check, Clock3, Flame, RefreshCw, Sparkles } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ArrowDown,
+  ArrowUp,
+  Check,
+  Clock3,
+  Flame,
+  RefreshCw,
+  Sparkles,
+} from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-import type { SortBy, SortOrder } from '@/app/contracts/sort-utils';
+import type { SortBy, SortOrder } from "@/app/contracts/sort-utils";
 
 interface SortDropdownProps {
   value: SortBy;
@@ -18,12 +26,18 @@ type SortOption = {
 };
 
 const BASE_SORT_OPTIONS: SortOption[] = [
-  { value: 'created_at', label: 'Newest', icon: Clock3 },
-  { value: 'updated_at', label: 'Last Updated', icon: RefreshCw },
-  { value: 'popularity', label: 'Most Popular', icon: Flame },
+  { value: "created_at", label: "Newest", icon: Clock3 },
+  { value: "updated_at", label: "Last Updated", icon: RefreshCw },
+  { value: "popularity", label: "Most Popular", icon: Flame },
 ];
 
-export function SortDropdown({ value, order, onChange, onOrderChange, showRelevance }: SortDropdownProps) {
+export function SortDropdown({
+  value,
+  order,
+  onChange,
+  onOrderChange,
+  showRelevance,
+}: SortDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(0);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -31,12 +45,17 @@ export function SortDropdown({ value, order, onChange, onOrderChange, showReleva
   const options = useMemo(() => {
     const extended = [...BASE_SORT_OPTIONS];
     if (showRelevance) {
-      extended.unshift({ value: 'relevance', label: 'Relevance', icon: Sparkles });
+      extended.unshift({
+        value: "relevance",
+        label: "Relevance",
+        icon: Sparkles,
+      });
     }
     return extended;
   }, [showRelevance]);
 
-  const selected = options.find((option) => option.value === value) ?? options[0];
+  const selected =
+    options.find((option) => option.value === value) ?? options[0];
 
   useEffect(() => {
     if (!isOpen) return;
@@ -47,8 +66,8 @@ export function SortDropdown({ value, order, onChange, onOrderChange, showReleva
       }
     };
 
-    window.addEventListener('mousedown', listener);
-    return () => window.removeEventListener('mousedown', listener);
+    window.addEventListener("mousedown", listener);
+    return () => window.removeEventListener("mousedown", listener);
   }, [isOpen]);
 
   useEffect(() => {
@@ -57,7 +76,7 @@ export function SortDropdown({ value, order, onChange, onOrderChange, showReleva
   }, [options, value]);
 
   const toggleOrder = () => {
-    onOrderChange(order === 'asc' ? 'desc' : 'asc');
+    onOrderChange(order === "asc" ? "desc" : "asc");
   };
 
   return (
@@ -69,22 +88,22 @@ export function SortDropdown({ value, order, onChange, onOrderChange, showReleva
         className="inline-flex min-w-44 items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground transition-colors hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20"
         onClick={() => setIsOpen((open) => !open)}
         onKeyDown={(event) => {
-          if (event.key === 'ArrowDown') {
+          if (event.key === "ArrowDown") {
             event.preventDefault();
             setIsOpen(true);
             setFocusedIndex((index) => Math.min(index + 1, options.length - 1));
           }
-          if (event.key === 'ArrowUp') {
+          if (event.key === "ArrowUp") {
             event.preventDefault();
             setIsOpen(true);
             setFocusedIndex((index) => Math.max(index - 1, 0));
           }
-          if (event.key === 'Enter' && isOpen) {
+          if (event.key === "Enter" && isOpen) {
             event.preventDefault();
             onChange(options[focusedIndex].value);
             setIsOpen(false);
           }
-          if (event.key === 'Escape') {
+          if (event.key === "Escape") {
             setIsOpen(false);
           }
         }}
@@ -98,12 +117,16 @@ export function SortDropdown({ value, order, onChange, onOrderChange, showReleva
 
       <button
         type="button"
-        aria-label={order === 'asc' ? 'Sort ascending' : 'Sort descending'}
+        aria-label={order === "asc" ? "Sort ascending" : "Sort descending"}
         onClick={toggleOrder}
         className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground transition-colors hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20"
       >
-        {order === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
-        {order === 'asc' ? 'Asc' : 'Desc'}
+        {order === "asc" ? (
+          <ArrowUp className="h-4 w-4" />
+        ) : (
+          <ArrowDown className="h-4 w-4" />
+        )}
+        {order === "asc" ? "Asc" : "Desc"}
       </button>
 
       {isOpen && (
@@ -121,7 +144,7 @@ export function SortDropdown({ value, order, onChange, onOrderChange, showReleva
                 type="button"
                 role="option"
                 aria-selected={active}
-                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors ${active ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-accent'} ${focusedIndex === index ? 'outline-none ring-1 ring-primary/40' : ''}`}
+                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors ${active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-accent"} ${focusedIndex === index ? "outline-none ring-1 ring-primary/40" : ""}`}
                 onMouseEnter={() => setFocusedIndex(index)}
                 onClick={() => {
                   onChange(option.value);

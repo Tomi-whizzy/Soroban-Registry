@@ -39,7 +39,8 @@ pub async fn create_backup(api_url: &str, contract_id: &str, include_state: bool
     let backup: ContractBackup = client
         .post(format!("{}/api/contracts/{}/backups", api_url, contract_id))
         .json(&CreateBackupRequest { include_state })
-        .send_with_retry().await?
+        .send_with_retry()
+        .await?
         .json()
         .await?;
 
@@ -54,7 +55,8 @@ pub async fn list_backups(api_url: &str, contract_id: &str) -> Result<()> {
     let client = crate::net::client();
     let backups: Vec<ContractBackup> = client
         .get(format!("{}/api/contracts/{}/backups", api_url, contract_id))
-        .send_with_retry().await?
+        .send_with_retry()
+        .await?
         .json()
         .await?;
 
@@ -83,7 +85,8 @@ pub async fn restore_backup(api_url: &str, contract_id: &str, backup_date: &str)
         .json(&RestoreBackupRequest {
             backup_date: backup_date.to_string(),
         })
-        .send_with_retry().await?
+        .send_with_retry()
+        .await?
         .json()
         .await?;
 
@@ -104,7 +107,8 @@ pub async fn verify_backup(api_url: &str, contract_id: &str, backup_date: &str) 
             "{}/api/contracts/{}/backups/{}/verify",
             api_url, contract_id, backup_date
         ))
-        .send_with_retry().await?;
+        .send_with_retry()
+        .await?;
 
     println!("✅ Backup verified: {}", backup_date);
     Ok(())
@@ -117,7 +121,8 @@ pub async fn backup_stats(api_url: &str, contract_id: &str) -> Result<()> {
             "{}/api/contracts/{}/backups/stats",
             api_url, contract_id
         ))
-        .send_with_retry().await?
+        .send_with_retry()
+        .await?
         .json()
         .await?;
 

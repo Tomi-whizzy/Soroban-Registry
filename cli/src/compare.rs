@@ -1,9 +1,9 @@
 use crate::net::RequestBuilderExt;
+use crate::table_format::render_table;
 use anyhow::{Context, Result};
 use colored::Colorize;
 use serde_json::Value;
 use std::fs;
-use crate::table_format::render_table;
 
 pub async fn run(
     api_url: &str,
@@ -27,7 +27,11 @@ pub async fn run(
             if response.status() == reqwest::StatusCode::NOT_FOUND {
                 anyhow::bail!("Contract not found: {}", id);
             }
-            anyhow::bail!("API returned error {} for contract {}", response.status(), id);
+            anyhow::bail!(
+                "API returned error {} for contract {}",
+                response.status(),
+                id
+            );
         }
 
         let data: Value = response.json().await?;
@@ -69,10 +73,18 @@ pub async fn run(
         };
 
         write_row("Name", &|c| c["name"].as_str().unwrap_or("").to_string());
-        write_row("Network", &|c| c["network"].as_str().unwrap_or("").to_string());
-        write_row("Category", &|c| c["category"].as_str().unwrap_or("").to_string());
-        write_row("Verified", &|c| c["is_verified"].as_bool().unwrap_or(false).to_string());
-        write_row("WASM Hash", &|c| c["wasm_hash"].as_str().unwrap_or("").to_string());
+        write_row("Network", &|c| {
+            c["network"].as_str().unwrap_or("").to_string()
+        });
+        write_row("Category", &|c| {
+            c["category"].as_str().unwrap_or("").to_string()
+        });
+        write_row("Verified", &|c| {
+            c["is_verified"].as_bool().unwrap_or(false).to_string()
+        });
+        write_row("WASM Hash", &|c| {
+            c["wasm_hash"].as_str().unwrap_or("").to_string()
+        });
 
         if let Some(path) = export_path {
             fs::write(path, csv_data)
@@ -112,8 +124,12 @@ pub async fn run(
     };
 
     push_row("Name", &|c| c["name"].as_str().unwrap_or("N/A").to_string());
-    push_row("Network", &|c| c["network"].as_str().unwrap_or("N/A").to_string());
-    push_row("Category", &|c| c["category"].as_str().unwrap_or("None").to_string());
+    push_row("Network", &|c| {
+        c["network"].as_str().unwrap_or("N/A").to_string()
+    });
+    push_row("Category", &|c| {
+        c["category"].as_str().unwrap_or("None").to_string()
+    });
     push_row("Verified", &|c| {
         if c["is_verified"].as_bool().unwrap_or(false) {
             "Yes".to_string()
@@ -139,10 +155,14 @@ pub async fn run(
         }
     });
     push_row("Deployments", &|c| {
-        c["deployments"].as_array().map_or("0".to_string(), |a| format!("{}", a.len()))
+        c["deployments"]
+            .as_array()
+            .map_or("0".to_string(), |a| format!("{}", a.len()))
     });
     push_row("Health Score", &|c| {
-        c["health_score"].as_f64().map_or("N/A".to_string(), |f| format!("{:.1}", f))
+        c["health_score"]
+            .as_f64()
+            .map_or("N/A".to_string(), |f| format!("{:.1}", f))
     });
 
     // Helper to truncate a string for display
@@ -157,7 +177,12 @@ pub async fn run(
     // Auto-calculate column widths
     let mut col_widths = vec![15]; // "Field" column width
     for i in 0..ids.len() {
-        let max_w = rows.iter().map(|r| r[i+1].len()).max().unwrap_or(10).max(ids[i].len());
+        let max_w = rows
+            .iter()
+            .map(|r| r[i + 1].len())
+            .max()
+            .unwrap_or(10)
+            .max(ids[i].len());
         col_widths.push(max_w.min(35)); // cap width to avoid overflow
     }
 
@@ -165,12 +190,12 @@ pub async fn run(
     for row in rows.iter_mut() {
         for (i, cell) in row.iter_mut().enumerate() {
             if i < col_widths.len() {
-                 // We only truncate if it's NOT the first column (Field) or if it's too long
-                 // Note: cell might contain ANSI codes, which makes truncation tricky.
-                 // For now, we'll assume the visible length should be truncated.
-                 // Actually, the current push_row uses colored strings, so direct truncation will break ANSI codes.
-                 // I'll skip truncation for now to avoid breaking colors, as the user likely wants to see the full IDs etc.
-                 // But I'll ensure the headers are padded correctly.
+                // We only truncate if it's NOT the first column (Field) or if it's too long
+                // Note: cell might contain ANSI codes, which makes truncation tricky.
+                // For now, we'll assume the visible length should be truncated.
+                // Actually, the current push_row uses colored strings, so direct truncation will break ANSI codes.
+                // I'll skip truncation for now to avoid breaking colors, as the user likely wants to see the full IDs etc.
+                // But I'll ensure the headers are padded correctly.
             }
         }
     }

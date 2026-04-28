@@ -1,5 +1,5 @@
-pub mod reviews;
 pub mod compatibility;
+pub mod reviews;
 pub mod validators;
 
 use crate::validation::extractors::ValidatedJson;
@@ -28,98 +28,16 @@ use shared::{
     CreateInteractionRequest, DeploymentHistoryQueryParams, FavoriteSearch, FieldOperator,
     GraphResponse, InteractionTimeSeriesPoint, InteractionTimeSeriesResponse,
     InteractionsListResponse, InteractionsQueryParams, Network, NetworkConfig, NetworkEndpoints,
-    NetworkInfo, NetworkListResponse, NetworkStatus, PaginatedResponse, PublishRequest, Publisher,
-    QueryCondition, QueryNode, QueryOperator, SaveFavoriteSearchRequest, SearchSuggestion,
-    SearchSuggestionsResponse, SemVer, TrendingParams, UpdateContractMetadataRequest,
-    UpdateContractStatusRequest, VerifyRequest, NetworkHealth, NetworkHealthResponse,
+    NetworkHealth, NetworkHealthResponse, NetworkInfo, NetworkListResponse, NetworkStatus,
+    PaginatedResponse, PublishRequest, Publisher, QueryCondition, QueryNode, QueryOperator,
+    SaveFavoriteSearchRequest, SearchSuggestion, SearchSuggestionsResponse, SemVer, TrendingParams,
+    UpdateContractMetadataRequest, UpdateContractStatusRequest, VerifyRequest,
 };
 
 // ────────────────────────────────────────────────────────────────────────────
-// Missing Types (Issue #51, #32, etc.)
-// These types were used in handlers.rs but are now missing from the shared crate.
+// NOTE: All types are now imported from the shared crate.
+// Duplicate definitions have been removed to maintain a single source of truth.
 // ────────────────────────────────────────────────────────────────────────────
-
-#[derive(Debug, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
-pub struct AdvancedSearchRequest {
-    pub query: QueryNode,
-    pub limit: Option<i64>,
-    pub offset: Option<i64>,
-    pub sort_by: Option<shared::SortBy>,
-    pub sort_order: Option<shared::SortOrder>,
-}
-
-#[derive(Debug, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
-#[serde(untagged)]
-pub enum QueryNode {
-    Condition(QueryCondition),
-    Group {
-        operator: QueryOperator,
-        conditions: Vec<QueryNode>,
-    },
-}
-
-#[derive(Debug, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum QueryOperator {
-    And,
-    Or,
-}
-
-#[derive(Debug, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
-pub struct QueryCondition {
-    pub field: String,
-    pub operator: FieldOperator,
-    pub value: serde_json::Value,
-}
-
-#[derive(Debug, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum FieldOperator {
-    Eq,
-    Ne,
-    Gt,
-    Lt,
-    In,
-    Contains,
-    StartsWith,
-}
-
-#[derive(Debug, serde::Serialize, sqlx::FromRow, utoipa::ToSchema)]
-pub struct FavoriteSearch {
-    pub id: uuid::Uuid,
-    pub name: String,
-    pub query_json: serde_json::Value,
-    pub created_at: chrono::DateTime<chrono::Utc>,
-}
-
-#[derive(Debug, serde::Deserialize, utoipa::ToSchema)]
-pub struct SaveFavoriteSearchRequest {
-    pub name: String,
-    pub query: QueryNode,
-}
-
-#[derive(Debug, sqlx::FromRow)]
-pub struct ContractSource {
-    pub id: uuid::Uuid,
-    pub contract_version_id: uuid::Uuid,
-    pub source_format: String,
-    pub storage_backend: String,
-    pub storage_key: String,
-    pub source_hash: String,
-    pub source_size: i64,
-    pub created_at: chrono::DateTime<chrono::Utc>,
-}
-
-#[derive(Debug, serde::Serialize, sqlx::FromRow, utoipa::ToSchema)]
-pub struct ContractDeployment {
-    pub id: uuid::Uuid,
-    pub contract_id: uuid::Uuid,
-    pub contract_version_id: uuid::Uuid,
-    pub network: shared::Network,
-    pub address: String,
-    pub deployed_at: chrono::DateTime<chrono::Utc>,
-    pub transaction_hash: Option<String>,
-}
 use sqlx::{Postgres, QueryBuilder};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path as StdPath, PathBuf};
@@ -1269,7 +1187,9 @@ pub async fn list_networks(State(state): State<AppState>) -> ApiResult<Json<Netw
     ),
     tag = "Networks"
 )]
-pub async fn get_network_health(State(state): State<AppState>) -> ApiResult<Json<NetworkHealthResponse>> {
+pub async fn get_network_health(
+    State(state): State<AppState>,
+) -> ApiResult<Json<NetworkHealthResponse>> {
     if let (Some(cached), true) = state
         .cache
         .get(NETWORKS_HEALTH_CACHE_NAMESPACE, NETWORKS_HEALTH_CACHE_KEY)
@@ -1282,19 +1202,20 @@ pub async fn get_network_health(State(state): State<AppState>) -> ApiResult<Json
 
     let catalog = fetch_network_catalog(&state.db).await?;
     let now = chrono::Utc::now();
-    
+
     let mut health = Vec::new();
     for net in catalog.networks {
         let rpc_available = net.status == NetworkStatus::Online;
-        
+
         // In a real scenario, we would fetch the current ledger height from the RPC here
         // For this task, we will simulate it by adding a small random lag if it's available
         let current_ledger = net.last_indexed_ledger_height.map(|h| (h + 5) as u32);
-        let indexer_lag = if let (Some(last), Some(curr)) = (net.last_indexed_ledger_height, current_ledger) {
-            Some((curr as i64) - last)
-        } else {
-            None
-        };
+        let indexer_lag =
+            if let (Some(last), Some(curr)) = (net.last_indexed_ledger_height, current_ledger) {
+                Some((curr as i64) - last)
+            } else {
+                None
+            };
 
         health.push(NetworkHealth {
             network_id: net.id,
@@ -1314,12 +1235,15 @@ pub async fn get_network_health(State(state): State<AppState>) -> ApiResult<Json
     };
 
     if let Ok(serialized) = serde_json::to_string(&response) {
-        state.cache.put(
-            NETWORKS_HEALTH_CACHE_NAMESPACE,
-            NETWORKS_HEALTH_CACHE_KEY,
-            serialized,
-            Some(Duration::from_secs(NETWORKS_HEALTH_TTL)),
-        ).await;
+        state
+            .cache
+            .put(
+                NETWORKS_HEALTH_CACHE_NAMESPACE,
+                NETWORKS_HEALTH_CACHE_KEY,
+                serialized,
+                Some(Duration::from_secs(NETWORKS_HEALTH_TTL)),
+            )
+            .await;
     }
 
     Ok(Json(response))
@@ -1525,7 +1449,6 @@ pub async fn list_contracts(
         "DESC"
     };
 
-
     let mut qb: QueryBuilder<'_, sqlx::Postgres> = QueryBuilder::new(
         "SELECT c.* FROM contracts c LEFT JOIN contract_interactions ci ON c.id = ci.contract_id ",
     );
@@ -1601,7 +1524,11 @@ pub async fn list_contracts(
 
     // Cursor pagination condition
     if let Some(cursor) = &cursor {
-        let op = if sort_order == shared::SortOrder::Asc { ">" } else { "<" };
+        let op = if sort_order == shared::SortOrder::Asc {
+            ">"
+        } else {
+            "<"
+        };
         qb.push(" AND (c.created_at ");
         qb.push(op);
         qb.push(" ");
@@ -1642,12 +1569,10 @@ pub async fn list_contracts(
     qb.push(" LIMIT ");
     qb.push_bind(fetch_limit);
 
-
     if cursor.is_none() {
         qb.push(" OFFSET ");
         qb.push_bind(offset);
     }
-
 
     let mut contracts: Vec<Contract> = match qb.build_query_as().fetch_all(&state.db).await {
         Ok(rows) => rows,
@@ -1768,11 +1693,11 @@ pub async fn list_contracts(
     }
 
     let mut response = PaginatedResponse::new(contracts, total, page, limit);
-    
+
     if has_more {
         if let Some(last_item) = response.items.last() {
-             let next_cursor = shared::pagination::Cursor::new(last_item.created_at, last_item.id);
-             response.next_cursor = Some(next_cursor.encode());
+            let next_cursor = shared::pagination::Cursor::new(last_item.created_at, last_item.id);
+            response.next_cursor = Some(next_cursor.encode());
         }
     }
 
@@ -2494,7 +2419,9 @@ pub async fn get_contract(
     let contract_id = contract.id;
     let db_clone = state.db.clone();
     tokio::spawn(async move {
-        if let Err(err) = crate::usage_counter::increment_usage_counter_with_timeout(contract_id, &db_clone).await {
+        if let Err(err) =
+            crate::usage_counter::increment_usage_counter_with_timeout(contract_id, &db_clone).await
+        {
             tracing::warn!(
                 contract_id = %contract_id,
                 error = ?err,
@@ -3704,7 +3631,10 @@ pub async fn create_contract_version(
     // Failures are logged but never block the main request
     let db_clone = state.db.clone();
     tokio::spawn(async move {
-        if let Err(err) = crate::usage_counter::increment_usage_counter_with_timeout(contract_uuid, &db_clone).await {
+        if let Err(err) =
+            crate::usage_counter::increment_usage_counter_with_timeout(contract_uuid, &db_clone)
+                .await
+        {
             tracing::warn!(
                 contract_id = %contract_uuid,
                 error = ?err,
@@ -4001,7 +3931,9 @@ pub async fn publish_contract(
     let contract_id = contract.id;
     let db_clone = state.db.clone();
     tokio::spawn(async move {
-        if let Err(err) = crate::usage_counter::increment_usage_counter_with_timeout(contract_id, &db_clone).await {
+        if let Err(err) =
+            crate::usage_counter::increment_usage_counter_with_timeout(contract_id, &db_clone).await
+        {
             tracing::warn!(
                 contract_id = %contract_id,
                 error = ?err,
@@ -5114,7 +5046,9 @@ pub async fn update_contract_metadata(
     let contract_id = after.id;
     let db_clone = state.db.clone();
     tokio::spawn(async move {
-        if let Err(err) = crate::usage_counter::increment_usage_counter_with_timeout(contract_id, &db_clone).await {
+        if let Err(err) =
+            crate::usage_counter::increment_usage_counter_with_timeout(contract_id, &db_clone).await
+        {
             tracing::warn!(
                 contract_id = %contract_id,
                 error = ?err,
@@ -5410,7 +5344,10 @@ pub async fn update_contract_status(
     // Failures are logged but never block the main request
     let db_clone = state.db.clone();
     tokio::spawn(async move {
-        if let Err(err) = crate::usage_counter::increment_usage_counter_with_timeout(contract_uuid, &db_clone).await {
+        if let Err(err) =
+            crate::usage_counter::increment_usage_counter_with_timeout(contract_uuid, &db_clone)
+                .await
+        {
             tracing::warn!(
                 contract_id = %contract_uuid,
                 error = ?err,
@@ -6653,11 +6590,14 @@ pub async fn advanced_search_contracts(
 
         let mut tags_map: HashMap<Uuid, Vec<shared::Tag>> = HashMap::new();
         for row in tag_rows {
-            tags_map.entry(row.contract_id).or_default().push(shared::Tag {
-                id: row.id,
-                name: row.name,
-                color: row.color,
-            });
+            tags_map
+                .entry(row.contract_id)
+                .or_default()
+                .push(shared::Tag {
+                    id: row.id,
+                    name: row.name,
+                    color: row.color,
+                });
         }
 
         for contract in &mut contracts {
@@ -6802,7 +6742,10 @@ fn apply_condition<'a>(
             let arr = cond.value.as_array().ok_or_else(|| {
                 ApiError::bad_request(
                     "InvalidValue",
-                    format!("Field '{}' expects an array value for operator 'in'", cond.field),
+                    format!(
+                        "Field '{}' expects an array value for operator 'in'",
+                        cond.field
+                    ),
                 )
             })?;
 
@@ -6928,5 +6871,4 @@ pub async fn delete_favorite_search(
     }
 
     Ok(StatusCode::NO_CONTENT)
-}
 }

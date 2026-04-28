@@ -212,7 +212,11 @@ async fn ensure_success(resp: reqwest::Response) -> Result<()> {
     anyhow::bail!("HTTP {}: {}", code, body);
 }
 
-fn build_summary(operation: BatchOperation, results: Vec<BatchResult>, rolled_back: bool) -> BatchSummary {
+fn build_summary(
+    operation: BatchOperation,
+    results: Vec<BatchResult>,
+    rolled_back: bool,
+) -> BatchSummary {
     let total = results.len();
     let succeeded = results.iter().filter(|r| r.success).count();
     let failed = total.saturating_sub(succeeded);

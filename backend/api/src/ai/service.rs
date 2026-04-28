@@ -2,8 +2,8 @@ use anyhow::{anyhow, Context, Result};
 use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::time::Duration;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::time::timeout;
 use tracing::{error, info, warn};
 
@@ -60,28 +60,24 @@ pub struct AIConfig {
 
 impl AIConfig {
     pub fn from_env() -> Result<Self> {
-        let provider_str = std::env::var("AI_PROVIDER")
-            .unwrap_or_else(|_| "openai".to_string());
-        
+        let provider_str = std::env::var("AI_PROVIDER").unwrap_or_else(|_| "openai".to_string());
+
         let provider = match provider_str.to_lowercase().as_str() {
             "anthropic" => AIProvider::Anthropic,
             _ => AIProvider::OpenAI,
         };
 
         let api_key = match provider {
-            AIProvider::OpenAI => {
-                std::env::var("OPENAI_API_KEY")
-                    .context("OPENAI_API_KEY environment variable is required")?
-            }
-            AIProvider::Anthropic => {
-                std::env::var("ANTHROPIC_API_KEY")
-                    .context("ANTHROPIC_API_KEY environment variable is required")?
-            }
+            AIProvider::OpenAI => std::env::var("OPENAI_API_KEY")
+                .context("OPENAI_API_KEY environment variable is required")?,
+            AIProvider::Anthropic => std::env::var("ANTHROPIC_API_KEY")
+                .context("ANTHROPIC_API_KEY environment variable is required")?,
         };
 
         let default_model = match provider {
-            AIProvider::OpenAI => std::env::var("OPENAI_MODEL")
-                .unwrap_or_else(|_| "gpt-4-turbo-preview".to_string()),
+            AIProvider::OpenAI => {
+                std::env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4-turbo-preview".to_string())
+            }
             AIProvider::Anthropic => std::env::var("ANTHROPIC_MODEL")
                 .unwrap_or_else(|_| "claude-3-opus-20240229".to_string()),
         };
@@ -134,21 +130,23 @@ impl AIService {
 
     pub async fn chat(&self, request: AIRequest) -> Result<AIResponse> {
         let start_time = std::time::Instant::now();
-        
+
         let model = request.model.unwrap_or(self.config.default_model.clone());
         let messages = self.build_messages(request)?;
 
         let response = match self.config.provider {
             AIProvider::OpenAI => {
-                self.call_openai(&messages, &model, request.max_tokens, request.stream).await
+                self.call_openai(&messages, &model, request.max_tokens, request.stream)
+                    .await
             }
             AIProvider::Anthropic => {
-                self.call_anthropic(&messages, &model, request.max_tokens, request.stream).await
+                self.call_anthropic(&messages, &model, request.max_tokens, request.stream)
+                    .await
             }
         }?;
 
         let response_time = start_time.elapsed().as_millis() as u64;
-        
+
         Ok(AIResponse {
             content: response.content,
             model_used: model,
@@ -206,10 +204,14 @@ impl AIService {
             "stream": stream.unwrap_or(false),
         });
 
-        let url = self.config.base_url.as_deref()
+        let url = self
+            .config
+            .base_url
+            .as_deref()
             .unwrap_or("https://api.openai.com/v1/chat/completions");
 
-        let response = self.http_client
+        let response = self
+            .http_client
             .post(url)
             .header("Authorization", format!("Bearer {}", self.config.api_key))
             .header("Content-Type", "application/json")
@@ -220,7 +222,10 @@ impl AIService {
 
         if !response.status().is_success() {
             let status = response.status();
-            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
             error!("OpenAI API error: {} - {}", status, error_text);
             anyhow::bail!("OpenAI API error: {} - {}", status, error_text);
         }
@@ -241,7 +246,8 @@ impl AIService {
         stream: Option<bool>,
     ) -> Result<OpenAIResponse> {
         // Convert messages to Anthropic format
-        let anthropic_messages: Vec<Value> = messages.iter()
+        let anthropic_messages: Vec<Value> = messages
+            .iter()
             .filter(|m| m.role != "system")
             .map(|m| {
                 serde_json::json!({
@@ -251,7 +257,8 @@ impl AIService {
             })
             .collect();
 
-        let system_prompt = messages.iter()
+        let system_prompt = messages
+            .iter()
             .find(|m| m.role == "system")
             .map(|m| m.content.as_str())
             .unwrap_or("");
@@ -264,10 +271,14 @@ impl AIService {
             "stream": stream.unwrap_or(false),
         });
 
-        let url = self.config.base_url.as_deref()
+        let url = self
+            .config
+            .base_url
+            .as_deref()
             .unwrap_or("https://api.anthropic.com/v1/messages");
 
-        let response = self.http_client
+        let response = self
+            .http_client
             .post(url)
             .header("x-api-key", &self.config.api_key)
             .header("anthropic-version", "2023-06-01")
@@ -279,7 +290,10 @@ impl AIService {
 
         if !response.status().is_success() {
             let status = response.status();
-            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
             error!("Anthropic API error: {} - {}", status, error_text);
             anyhow::bail!("Anthropic API error: {} - {}", status, error_text);
         }
@@ -300,7 +314,9 @@ impl AIService {
         Ok(OpenAIResponse {
             content,
             model: model.to_string(),
-            token_count: anthropic_resp["usage"]["output_tokens"].as_u64().map(|v| v as u32),
+            token_count: anthropic_resp["usage"]["output_tokens"]
+                .as_u64()
+                .map(|v| v as u32),
             metadata: anthropic_resp,
         })
     }
@@ -313,4 +329,3 @@ struct OpenAIResponse {
     token_count: Option<u32>,
     metadata: Value,
 }
-

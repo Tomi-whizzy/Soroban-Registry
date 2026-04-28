@@ -78,7 +78,8 @@ pub async fn run(api_url: &str, address: &str, network: &str, json: bool) -> Res
     let initiation = initiate_verification(api_url, &client, &contract, address).await?;
 
     // ── 3. Wait for completion when backend reports pending/in-progress
-    contract = wait_for_verification_completion(api_url, &client, address, network, &initiation).await?;
+    contract =
+        wait_for_verification_completion(api_url, &client, address, network, &initiation).await?;
 
     // ── 4. Build result with status/errors/warnings
     let result = build_result(&contract, &initiation, address, network);
@@ -112,7 +113,8 @@ async fn fetch_contract(
 
     let response = client
         .get(&search_url)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to connect to registry API. Is the registry running?")?;
 
     let status = response.status();
@@ -167,7 +169,10 @@ async fn initiate_verification(
         .to_string();
 
     // Preferred path: source verification endpoint when source is available.
-    if let Some(source_code) = contract["source_code"].as_str().filter(|s| !s.trim().is_empty()) {
+    if let Some(source_code) = contract["source_code"]
+        .as_str()
+        .filter(|s| !s.trim().is_empty())
+    {
         let compiler_version = contract["compiler_version"]
             .as_str()
             .unwrap_or("latest")
@@ -187,7 +192,8 @@ async fn initiate_verification(
                 "build_params": build_params,
                 "compiler_version": compiler_version
             }))
-            .send_with_retry().await
+            .send_with_retry()
+            .await
             .context("Failed to initiate source verification")?;
 
         if response.status().is_success() {
@@ -217,7 +223,8 @@ async fn initiate_verification(
                 }
             ]
         }))
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to initiate verification")?;
 
     if !response.status().is_success() {
@@ -311,7 +318,12 @@ fn extract_contract<'a>(raw: &'a Value, address: &str) -> Result<Value> {
     anyhow::bail!("Unexpected registry response format")
 }
 
-fn build_result(contract: &Value, initiation: &Value, address: &str, network: &str) -> VerificationResult {
+fn build_result(
+    contract: &Value,
+    initiation: &Value,
+    address: &str,
+    network: &str,
+) -> VerificationResult {
     let is_verified = contract["is_verified"].as_bool().unwrap_or(false);
     let verification_status = resolve_verification_status(contract, initiation, is_verified);
     let (errors, warnings) = collect_messages(initiation, contract);
@@ -338,11 +350,7 @@ fn build_result(contract: &Value, initiation: &Value, address: &str, network: &s
     }
 }
 
-fn resolve_verification_status(
-    contract: &Value,
-    initiation: &Value,
-    is_verified: bool,
-) -> String {
+fn resolve_verification_status(contract: &Value, initiation: &Value, is_verified: bool) -> String {
     if let Some(status) = contract["verification_status"].as_str() {
         return status.to_lowercase();
     }
@@ -432,7 +440,11 @@ async fn fetch_detail(api_url: &str, client: &reqwest::Client, contract: &Value)
     }
 }
 
-fn print_json(result: &VerificationResult, detail: &Option<Value>, initiation: &Value) -> Result<()> {
+fn print_json(
+    result: &VerificationResult,
+    detail: &Option<Value>,
+    initiation: &Value,
+) -> Result<()> {
     let mut out = serde_json::to_value(result)?;
 
     if let Some(obj) = out.as_object_mut() {
@@ -490,7 +502,9 @@ fn print_human(result: &VerificationResult, detail: &Option<Value>) {
     // ── Verification status ──────────────────────────────────────────────────
     let (icon, status_label) = match result.verification_status.as_str() {
         "verified" => ("✔".green().bold(), "VERIFIED".green().bold()),
-        "pending" | "processing" | "in_progress" => ("●".yellow().bold(), "PENDING".yellow().bold()),
+        "pending" | "processing" | "in_progress" => {
+            ("●".yellow().bold(), "PENDING".yellow().bold())
+        }
         "failed" => ("✘".red().bold(), "FAILED".red().bold()),
         _ => ("✘".red().bold(), "UNVERIFIED".red().bold()),
     };

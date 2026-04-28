@@ -101,7 +101,10 @@ impl ValidationRule {
 /// ```
 pub fn validate_request(
     rules: Vec<ValidationRule>,
-) -> impl Fn(Request<Body>, Next) -> std::pin::Pin<Box<dyn std::future::Future<Output = Response> + Send>>
+) -> impl Fn(
+    Request<Body>,
+    Next,
+) -> std::pin::Pin<Box<dyn std::future::Future<Output = Response> + Send>>
        + Clone
        + Send
        + 'static {
@@ -121,7 +124,8 @@ pub fn validate_request(
             }
 
             if !errors.is_empty() {
-                let body = super::extractors::ValidationErrorResponse::new(errors, correlation_id.clone());
+                let body =
+                    super::extractors::ValidationErrorResponse::new(errors, correlation_id.clone());
                 let json = serde_json::to_vec(&body).unwrap_or_default();
                 let mut response = Response::builder()
                     .status(StatusCode::BAD_REQUEST)

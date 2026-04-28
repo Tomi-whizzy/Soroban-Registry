@@ -157,7 +157,8 @@ pub async fn deliver_with_retry(
             .header("X-Soroban-Signature", format!("sha256={}", &signature))
             .header("X-Soroban-Delivery-Id", &delivery_id)
             .body(payload_bytes.clone())
-            .send_with_retry().await;
+            .send_with_retry()
+            .await;
 
         match result {
             Ok(resp) => {
@@ -230,7 +231,8 @@ pub async fn create_webhook(
     let response = client
         .post(format!("{}/api/webhooks", api_url))
         .json(&body)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to reach registry API")?;
 
     if !response.status().is_success() {
@@ -269,7 +271,8 @@ pub async fn list_webhooks(api_url: &str) -> Result<()> {
 
     let response = client
         .get(format!("{}/api/webhooks", api_url))
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to reach registry API")?;
 
     if !response.status().is_success() {
@@ -308,7 +311,8 @@ pub async fn delete_webhook(api_url: &str, webhook_id: &str) -> Result<()> {
 
     let response = client
         .delete(format!("{}/api/webhooks/{}", api_url, webhook_id))
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to reach registry API")?;
 
     if !response.status().is_success() {
@@ -331,7 +335,8 @@ pub async fn test_webhook(api_url: &str, webhook_id: &str) -> Result<()> {
 
     let response = client
         .post(format!("{}/api/webhooks/{}/test", api_url, webhook_id))
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to reach registry API")?;
 
     if !response.status().is_success() {
@@ -358,7 +363,8 @@ pub async fn webhook_logs(api_url: &str, webhook_id: &str, limit: usize) -> Resu
             "{}/api/webhooks/{}/deliveries?limit={}",
             api_url, webhook_id, limit
         ))
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to reach registry API")?;
 
     if !response.status().is_success() {
@@ -423,7 +429,8 @@ pub async fn retry_delivery(api_url: &str, delivery_id: &str) -> Result<()> {
             "{}/api/webhook-deliveries/{}/retry",
             api_url, delivery_id
         ))
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to reach registry API")?;
 
     if !response.status().is_success() {

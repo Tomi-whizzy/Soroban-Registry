@@ -6,7 +6,7 @@ export interface CollaborativeReview {
   id: string;
   contract_id: string;
   version: string;
-  status: 'pending' | 'approved' | 'changes_requested';
+  status: "pending" | "approved" | "changes_requested";
   created_at: string;
   updated_at: string;
 }
@@ -15,7 +15,7 @@ export interface CollaborativeReviewer {
   id: string;
   review_id: string;
   user_id: string;
-  status: 'pending' | 'approved' | 'changes_requested';
+  status: "pending" | "approved" | "changes_requested";
   created_at: string;
   updated_at: string;
 }

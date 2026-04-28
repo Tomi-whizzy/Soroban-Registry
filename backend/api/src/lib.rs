@@ -35,12 +35,12 @@ pub mod interoperability_handlers;
 pub mod metrics;
 pub mod metrics_handler;
 pub mod migration_handlers;
+pub mod ml_detector;
 pub mod multisig_handlers;
 pub mod multisig_routes;
 pub mod mutation_testing_handlers;
 pub mod notification_handlers;
 pub mod notification_routes;
-pub mod ml_detector;
 pub mod openapi;
 pub mod org_handlers;
 pub mod pagination;
@@ -71,6 +71,6 @@ pub mod zk_proof_handlers;
 
 // New modules for feature tasks
 pub mod ai;
-pub mod state_monitor;
 pub mod search_postgres;
+pub mod state_monitor;
 pub mod stats;

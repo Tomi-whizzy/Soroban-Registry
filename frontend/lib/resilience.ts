@@ -1,7 +1,7 @@
 // Simple circuit breaker + exponential backoff utility for frontend API calls
-import { logError } from './errors';
+import { logError } from "./errors";
 
-type BreakerState = 'closed' | 'open' | 'half-open';
+type BreakerState = "closed" | "open" | "half-open";
 
 interface CircuitOptions {
   failureThreshold?: number; // failures before opening
@@ -21,7 +21,7 @@ const DEFAULTS: Required<CircuitOptions> = {
 
 class CircuitBreaker {
   private failures = 0;
-  private state: BreakerState = 'closed';
+  private state: BreakerState = "closed";
   private openedAt: number | null = null;
   private trials = 0;
   private opts: Required<CircuitOptions>;
@@ -32,24 +32,32 @@ class CircuitBreaker {
 
   public recordSuccess() {
     this.failures = 0;
-    this.state = 'closed';
+    this.state = "closed";
     this.openedAt = null;
     this.trials = 0;
     try {
-      if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_API_URL) {
-        void fetch(`${process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '')}/api/observability/client_breaker`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ endpoint: '', state: 'closed', failures: this.failures, opened_at: null }),
-          keepalive: true,
-        }).catch(() => {});
+      if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_API_URL) {
+        void fetch(
+          `${process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, "")}/api/observability/client_breaker`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              endpoint: "",
+              state: "closed",
+              failures: this.failures,
+              opened_at: null,
+            }),
+            keepalive: true,
+          },
+        ).catch(() => {});
       }
     } catch {}
   }
 
   public reset() {
     this.failures = 0;
-    this.state = 'closed';
+    this.state = "closed";
     this.openedAt = null;
     this.trials = 0;
   }
@@ -62,31 +70,39 @@ class CircuitBreaker {
   }
 
   private open() {
-    this.state = 'open';
+    this.state = "open";
     this.openedAt = Date.now();
     this.trials = 0;
     try {
-      logError(new Error('Circuit opened'), { endpoint: undefined });
+      logError(new Error("Circuit opened"), { endpoint: undefined });
     } catch {}
     try {
-      if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_API_URL) {
-        void fetch(`${process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '')}/api/observability/client_breaker`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ endpoint: '', state: 'open', failures: this.failures, opened_at: this.openedAt }),
-          keepalive: true,
-        }).catch(() => {});
+      if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_API_URL) {
+        void fetch(
+          `${process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, "")}/api/observability/client_breaker`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              endpoint: "",
+              state: "open",
+              failures: this.failures,
+              opened_at: this.openedAt,
+            }),
+            keepalive: true,
+          },
+        ).catch(() => {});
       }
     } catch {}
   }
 
   private tryHalfOpen() {
-    this.state = 'half-open';
+    this.state = "half-open";
     this.trials = 0;
   }
 
   public isClosed() {
-    if (this.state === 'open' && this.openedAt) {
+    if (this.state === "open" && this.openedAt) {
       const since = Date.now() - this.openedAt;
       if (since > this.opts.cooldownPeriodMs) {
         this.tryHalfOpen();
@@ -98,9 +114,12 @@ class CircuitBreaker {
   }
 
   public allowRequest(): boolean {
-    if (this.state === 'closed') return true;
-    if (this.state === 'open') {
-      if (this.openedAt && Date.now() - this.openedAt > this.opts.cooldownPeriodMs) {
+    if (this.state === "closed") return true;
+    if (this.state === "open") {
+      if (
+        this.openedAt &&
+        Date.now() - this.openedAt > this.opts.cooldownPeriodMs
+      ) {
         this.tryHalfOpen();
         return true;
       }
@@ -134,7 +153,15 @@ export function getBreaker(key: string, opts?: CircuitOptions) {
 }
 
 export function getAllBreakerStates() {
-  const out: Record<string, { state: BreakerState; failures: number; openedAt: number | null; trials: number }> = {};
+  const out: Record<
+    string,
+    {
+      state: BreakerState;
+      failures: number;
+      openedAt: number | null;
+      trials: number;
+    }
+  > = {};
   for (const [k, b] of breakers.entries()) {
     out[k] = {
       state: b.getState(),
@@ -168,10 +195,10 @@ export async function resilientCall<T>(
   const retryBase = opts?.retryBaseMs ?? DEFAULTS.retryBaseMs;
 
   if (!breaker.allowRequest()) {
-    const err = new Error('Service temporarily unavailable (circuit open)');
+    const err = new Error("Service temporarily unavailable (circuit open)");
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    err.name = 'CircuitOpenError';
+    err.name = "CircuitOpenError";
     throw err;
   }
 
@@ -180,17 +207,25 @@ export async function resilientCall<T>(
     try {
       const res = await fn();
       breaker.recordSuccess();
-        try {
-          const endpointLabel = opts?.endpoint ?? key;
-          if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_API_URL) {
-            void fetch(`${process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '')}/api/observability/client_breaker`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ endpoint: endpointLabel, state: 'closed', failures: (breaker as any).failures ?? 0, opened_at: (breaker as any).openedAt ?? null }),
+      try {
+        const endpointLabel = opts?.endpoint ?? key;
+        if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_API_URL) {
+          void fetch(
+            `${process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, "")}/api/observability/client_breaker`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                endpoint: endpointLabel,
+                state: "closed",
+                failures: (breaker as any).failures ?? 0,
+                opened_at: (breaker as any).openedAt ?? null,
+              }),
               keepalive: true,
-            }).catch(() => {});
-          }
-        } catch {}
+            },
+          ).catch(() => {});
+        }
+      } catch {}
       return res;
     } catch (e) {
       lastErr = e;
@@ -198,17 +233,29 @@ export async function resilientCall<T>(
       try {
         logError(e as Error, { endpoint: opts?.endpoint ?? key, attempt });
       } catch {}
-        try {
-          const endpointLabel = opts?.endpoint ?? key;
-          if (!breaker.allowRequest() && typeof window !== 'undefined' && process.env.NEXT_PUBLIC_API_URL) {
-            void fetch(`${process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '')}/api/observability/client_breaker`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ endpoint: endpointLabel, state: 'open', failures: (breaker as any).failures ?? 0, opened_at: (breaker as any).openedAt ?? null }),
+      try {
+        const endpointLabel = opts?.endpoint ?? key;
+        if (
+          !breaker.allowRequest() &&
+          typeof window !== "undefined" &&
+          process.env.NEXT_PUBLIC_API_URL
+        ) {
+          void fetch(
+            `${process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, "")}/api/observability/client_breaker`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                endpoint: endpointLabel,
+                state: "open",
+                failures: (breaker as any).failures ?? 0,
+                opened_at: (breaker as any).openedAt ?? null,
+              }),
               keepalive: true,
-            }).catch(() => {});
-          }
-        } catch {}
+            },
+          ).catch(() => {});
+        }
+      } catch {}
       // If we've opened the circuit, stop immediately
       if (!breaker.allowRequest()) break;
 

@@ -36,7 +36,9 @@ pub struct PluginCommand {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum PluginStep {
-    Print { text: String },
+    Print {
+        text: String,
+    },
     HttpGet {
         /// Path relative to the registry API base, e.g. "/api/contracts/trending".
         /// Absolute URLs are rejected to prevent SSRF.
@@ -129,8 +131,8 @@ fn plugin_manifest_path(name: &str, version: &str) -> Result<PathBuf> {
 }
 
 fn read_json_file<T: for<'de> Deserialize<'de>>(path: &Path) -> Result<T> {
-    let content = fs::read_to_string(path)
-        .with_context(|| format!("Failed to read {}", path.display()))?;
+    let content =
+        fs::read_to_string(path).with_context(|| format!("Failed to read {}", path.display()))?;
     serde_json::from_str(&content).with_context(|| format!("Failed to parse {}", path.display()))
 }
 
@@ -150,7 +152,8 @@ pub fn discover_installed() -> Result<Vec<InstalledPlugin>> {
     }
 
     let mut plugins = Vec::new();
-    for name_entry in fs::read_dir(&root).with_context(|| format!("Failed to read {}", root.display()))?
+    for name_entry in
+        fs::read_dir(&root).with_context(|| format!("Failed to read {}", root.display()))?
     {
         let name_entry = name_entry?;
         if !name_entry.file_type()?.is_dir() {
@@ -199,8 +202,7 @@ pub fn set_plugin_enabled(name: &str, enabled: bool) -> Result<()> {
 }
 
 pub fn set_plugin_config_json(name: &str, json: &str) -> Result<()> {
-    let new_config: Value =
-        serde_json::from_str(json).context("Invalid JSON passed to --json")?;
+    let new_config: Value = serde_json::from_str(json).context("Invalid JSON passed to --json")?;
     if !new_config.is_object() {
         anyhow::bail!("Plugin config must be a JSON object");
     }
@@ -226,7 +228,9 @@ fn is_plugin_enabled(name: &str) -> Result<bool> {
     Ok(cfg.plugins.get(name).map(|e| e.enabled).unwrap_or(true))
 }
 
-fn build_command_index(installed: &[InstalledPlugin]) -> Result<HashMap<String, (PluginManifest, PluginCommand)>> {
+fn build_command_index(
+    installed: &[InstalledPlugin],
+) -> Result<HashMap<String, (PluginManifest, PluginCommand)>> {
     let mut index = HashMap::new();
     for plugin in installed {
         if !is_plugin_enabled(&plugin.manifest.name)? {
@@ -335,7 +339,8 @@ pub async fn install_from_registry(api_url: &str, name: &str, version: Option<&s
             name,
             resolved_version
         ))
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to fetch plugin manifest")?;
 
     if !resp.status().is_success() {
@@ -382,7 +387,8 @@ pub fn uninstall(name: &str, version: Option<&str>) -> Result<()> {
     if !target.exists() {
         anyhow::bail!("Plugin not installed: {}", target.display());
     }
-    fs::remove_dir_all(&target).with_context(|| format!("Failed to remove {}", target.display()))?;
+    fs::remove_dir_all(&target)
+        .with_context(|| format!("Failed to remove {}", target.display()))?;
     println!("{} Uninstalled {}", "✓".green(), name.bold());
     Ok(())
 }
@@ -394,7 +400,8 @@ pub async fn fetch_marketplace(api_url: &str) -> Result<MarketplaceIndexResponse
             "{}/api/plugins/marketplace",
             api_url.trim_end_matches('/')
         ))
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to fetch plugin marketplace")?;
     if !resp.status().is_success() {
         anyhow::bail!(
@@ -434,7 +441,10 @@ pub async fn run_installed_command(
     execute_command_steps(&ctx, &command.steps).await
 }
 
-async fn execute_command_steps(ctx: &TemplateContext, steps: &[PluginStep]) -> Result<PluginRunResult> {
+async fn execute_command_steps(
+    ctx: &TemplateContext,
+    steps: &[PluginStep],
+) -> Result<PluginRunResult> {
     let mut stdout = String::new();
     let mut runtime_ctx = ctx.clone();
 
@@ -467,9 +477,16 @@ async fn execute_command_steps(ctx: &TemplateContext, steps: &[PluginStep]) -> R
                     rendered_path
                 );
                 let client = crate::net::client();
-                let resp = client.get(url).send_with_retry().await.context("HTTP GET failed")?;
+                let resp = client
+                    .get(url)
+                    .send_with_retry()
+                    .await
+                    .context("HTTP GET failed")?;
                 let status = resp.status();
-                let body = resp.text().await.context("Failed reading HTTP response body")?;
+                let body = resp
+                    .text()
+                    .await
+                    .context("Failed reading HTTP response body")?;
 
                 if !status.is_success() {
                     anyhow::bail!("Registry returned {}: {}", status, body);
@@ -578,10 +595,9 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/api/plugins/marketplace"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(marketplace_response(
-                "hello",
-                "0.1.0",
-            )))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(marketplace_response("hello", "0.1.0")),
+            )
             .mount(&server)
             .await;
         Mock::given(method("GET"))
@@ -610,10 +626,9 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/api/plugins/marketplace"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(marketplace_response(
-                "cfg",
-                "1.0.0",
-            )))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(marketplace_response("cfg", "1.0.0")),
+            )
             .mount(&server)
             .await;
         Mock::given(method("GET"))
@@ -644,10 +659,9 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/api/plugins/marketplace"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(marketplace_response(
-                "evil",
-                "0.0.1",
-            )))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(marketplace_response("evil", "0.0.1")),
+            )
             .mount(&server)
             .await;
         Mock::given(method("GET"))

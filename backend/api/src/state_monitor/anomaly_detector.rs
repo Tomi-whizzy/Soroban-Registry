@@ -1,7 +1,7 @@
 use anyhow::Result;
 use sqlx::PgPool;
 use std::sync::Arc;
-use tracing::{info, warn, debug};
+use tracing::{debug, info, warn};
 
 use crate::state_monitor::StateChangeEntry;
 
@@ -32,17 +32,16 @@ impl AnomalyDetector {
     }
 
     /// Analyze a state change for anomalies
-    pub async fn analyze_state_change(
-        &self,
-        change: &StateChangeEntry,
-    ) -> Result<()> {
+    pub async fn analyze_state_change(&self, change: &StateChangeEntry) -> Result<()> {
         for rule in &self.rules {
             if let Some(anomaly) = rule.check(change, &self.db).await? {
                 // Save anomaly to database
                 self.record_anomaly(anomaly).await?;
                 info!(
                     "Anomaly detected: {} for contract {} key={}",
-                    anomaly.anomaly_type, anomaly.contract_id, anomaly.state_key.as_deref().unwrap_or("N/A")
+                    anomaly.anomaly_type,
+                    anomaly.contract_id,
+                    anomaly.state_key.as_deref().unwrap_or("N/A")
                 );
             }
         }
@@ -51,10 +50,7 @@ impl AnomalyDetector {
     }
 
     /// Record an anomaly in the database
-    async fn record_anomaly(
-        &self,
-        anomaly: AnomalyRecord,
-    ) -> Result<()> {
+    async fn record_anomaly(&self, anomaly: AnomalyRecord) -> Result<()> {
         sqlx::query!(
             r#"
             INSERT INTO state_anomalies (
@@ -114,13 +110,13 @@ impl AnomalyRule for SuddenSpikeRule {
         if let (Ok(old_num), Ok(new_num)) = (old_val.parse::<f64>(), new_val.parse::<f64>()) {
             if old_num > 0.0 {
                 let increase_pct = ((new_num - old_num) / old_num) * 100.0;
-                
+
                 if increase_pct >= self.threshold {
                     // Check frequency of changes in last hour
                     let count: i64 = sqlx::query_scalar(
                         "SELECT COUNT(*) FROM contract_state_history 
                          WHERE contract_id = $1 AND state_key = $2 
-                         AND created_at > NOW() - INTERVAL '1 hour'"
+                         AND created_at > NOW() - INTERVAL '1 hour'",
                     )
                     .bind(change.contract_id)
                     .bind(&change.state_key)
@@ -177,7 +173,7 @@ impl AnomalyRule for UnusualPatternRule {
         let count: i64 = sqlx::query_scalar(
             "SELECT COUNT(*) FROM contract_state_history 
              WHERE contract_id = $1 
-             AND created_at > NOW() - INTERVAL '1 minute'"
+             AND created_at > NOW() - INTERVAL '1 minute'",
         )
         .bind(change.contract_id)
         .fetch_one(db)
@@ -187,7 +183,11 @@ impl AnomalyRule for UnusualPatternRule {
             return Ok(Some(AnomalyRecord {
                 contract_id: change.contract_id,
                 anomaly_type: "high_frequency_changes".to_string(),
-                severity: if count > 50 { "critical".to_string() } else { "medium".to_string() },
+                severity: if count > 50 {
+                    "critical".to_string()
+                } else {
+                    "medium".to_string()
+                },
                 description: format!(
                     "Contract state changed {} times in the last minute (threshold: {})",
                     count, self.max_changes_per_minute
@@ -231,13 +231,13 @@ impl AnomalyRule for UnexpectedValueChangeRule {
                      FROM contract_state_history 
                      WHERE contract_id = $1 AND state_key = $2 
                      AND created_at > NOW() - INTERVAL '24 hours'
-                     AND new_value ~ '^[0-9]+$'"
+                     AND new_value ~ '^[0-9]+$'",
                 )
                 .bind(change.contract_id)
                 .bind(&change.state_key)
                 .fetch_optional(db)
                 .await?;
-                
+
                 if let Some(avg_str) = avg_value {
                     if let Ok(avg) = avg_str.parse::<f64>() {
                         if avg > 10.0 {

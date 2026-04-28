@@ -1,6 +1,6 @@
 use anyhow::Result;
-use colored::*;
 use chrono::{DateTime, Duration, Utc};
+use colored::*;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -40,13 +40,22 @@ fn save_cache(cache: &UpdateCache) -> Result<()> {
     Ok(())
 }
 
-pub async fn check_version(check_updates: bool, auto_update: bool, rollback: Option<String>) -> Result<()> {
+pub async fn check_version(
+    check_updates: bool,
+    auto_update: bool,
+    rollback: Option<String>,
+) -> Result<()> {
     println!("\n{}", "Soroban Registry CLI".bold().cyan());
     println!("Version: {}", env!("CARGO_PKG_VERSION"));
     if let Some(target) = rollback {
         println!("Rollback target: {}", target.yellow());
-        println!("Status: {}", "Rollback requested (manual install required)".yellow());
-        println!("Hint: reinstall previous release/tag via cargo install --git ... --tag <version>");
+        println!(
+            "Status: {}",
+            "Rollback requested (manual install required)".yellow()
+        );
+        println!(
+            "Hint: reinstall previous release/tag via cargo install --git ... --tag <version>"
+        );
         println!();
         return Ok(());
     }
@@ -62,7 +71,11 @@ pub async fn check_version(check_updates: bool, auto_update: bool, rollback: Opt
         let current = env!("CARGO_PKG_VERSION");
         let latest_semver = Version::parse(latest_version.trim_start_matches('v')).ok();
         let current_semver = Version::parse(current).ok();
-        if latest_semver.zip(current_semver).map(|(l, c)| l > c).unwrap_or(false) {
+        if latest_semver
+            .zip(current_semver)
+            .map(|(l, c)| l > c)
+            .unwrap_or(false)
+        {
             println!("Status:  {}", "Update available".yellow());
             println!("Latest:  {}", latest_version.bold());
             if let Some(notes) = changelog {

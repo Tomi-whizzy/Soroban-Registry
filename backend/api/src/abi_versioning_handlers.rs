@@ -124,7 +124,10 @@ pub async fn publish_abi(
         None
     };
 
-    Ok(Json(PublishAbiResponse { record, compatibility }))
+    Ok(Json(PublishAbiResponse {
+        record,
+        compatibility,
+    }))
 }
 
 // ── GET /api/contracts/:id/abi/:version ───────────────────────────────────
@@ -267,7 +270,11 @@ fn run_compatibility_check(
 
     for c in raw_changes {
         let migration_note = match c.severity {
-            ChangeSeverity::Breaking => Some(build_migration_note(&c.category, &c.message, c.function.as_deref())),
+            ChangeSeverity::Breaking => Some(build_migration_note(
+                &c.category,
+                &c.message,
+                c.function.as_deref(),
+            )),
             ChangeSeverity::NonBreaking => None,
         };
 
@@ -314,6 +321,9 @@ fn build_migration_note(category: &str, message: &str, function: Option<&str>) -
                 message
             )
         }
-        _ => format!("Breaking change detected: {}. Review all affected call sites.", message),
+        _ => format!(
+            "Breaking change detected: {}. Review all affected call sites.",
+            message
+        ),
     }
 }

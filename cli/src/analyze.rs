@@ -172,7 +172,8 @@ async fn fetch_contract(
 
     let res = client
         .get(&url)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to connect to registry API")?;
 
     let status = res.status();

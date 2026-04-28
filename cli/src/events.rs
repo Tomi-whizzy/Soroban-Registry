@@ -49,7 +49,8 @@ pub async fn query_events(
 
         let response = client
             .get(&url)
-            .send_with_retry().await
+            .send_with_retry()
+            .await
             .map_err(|e| anyhow::anyhow!("Failed to fetch event stats: {}", e))?;
 
         if !response.status().is_success() {
@@ -108,7 +109,8 @@ pub async fn query_events(
 
     let response = client
         .get(&url)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .map_err(|e| anyhow::anyhow!("Failed to fetch events: {}", e))?;
 
     if !response.status().is_success() {

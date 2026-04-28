@@ -11,7 +11,6 @@ use std::fmt;
 use uuid::Uuid;
 
 use crate::{error::ApiError, state::AppState};
-use uuid::Uuid;
 
 pub const MIN_JWT_SECRET_LEN: usize = 32;
 
@@ -75,14 +74,6 @@ pub struct AuthClaims {
     pub role: Option<String>,
     #[serde(default)]
     pub admin: bool,
-}
-
-pub type AuthenticatedUser = AuthClaims;
-
-#[derive(Debug, Clone)]
-pub struct AuthenticatedUser {
-    pub id: Uuid,
-    pub claims: AuthClaims,
 }
 
 #[derive(Debug, Clone)]

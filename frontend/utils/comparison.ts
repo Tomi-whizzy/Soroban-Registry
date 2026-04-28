@@ -1,22 +1,22 @@
-import type { Contract } from '@/types';
+import type { Contract } from "@/types";
 
 export type ComparisonMetricKey =
-  | 'contract_id'
-  | 'network'
-  | 'category'
-  | 'publisher'
-  | 'verification_status'
-  | 'wasm_hash'
-  | 'deployment_count'
-  | 'popularity_score'
-  | 'health_score';
+  | "contract_id"
+  | "network"
+  | "category"
+  | "publisher"
+  | "verification_status"
+  | "wasm_hash"
+  | "deployment_count"
+  | "popularity_score"
+  | "health_score";
 
-export type CellTone = 'neutral' | 'best' | 'worst' | 'different';
+export type CellTone = "neutral" | "best" | "worst" | "different";
 
 export type DiffLine =
-  | { type: 'context'; value: string }
-  | { type: 'add'; value: string }
-  | { type: 'remove'; value: string };
+  | { type: "context"; value: string }
+  | { type: "add"; value: string }
+  | { type: "remove"; value: string };
 
 export interface ComparableContract {
   id: string;
@@ -35,24 +35,34 @@ export interface ComparableContract {
   deploymentCount: number;
   popularityScore: number;
   healthScore: number;
-  base?: Pick<Contract, 'contract_id' | 'network' | 'publisher_id' | 'wasm_hash' | 'updated_at'>;
+  base?: Pick<
+    Contract,
+    "contract_id" | "network" | "publisher_id" | "wasm_hash" | "updated_at"
+  >;
 }
 
 function indentBlock(text: string, spaces: number) {
-  const pad = ' '.repeat(spaces);
+  const pad = " ".repeat(spaces);
   return text
-    .split('\n')
+    .split("\n")
     .map((l) => (l.length > 0 ? `${pad}${l}` : l))
-    .join('\n');
+    .join("\n");
 }
 
-function latestVersionFromVersions(versions: Array<{ version: string; created_at: string }>) {
+function latestVersionFromVersions(
+  versions: Array<{ version: string; created_at: string }>,
+) {
   if (versions.length === 0) return null;
-  return [...versions].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0] ?? null;
+  return (
+    [...versions].sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    )[0] ?? null
+  );
 }
 
 function collectStringValues(input: unknown, sink: string[]) {
-  if (typeof input === 'string') {
+  if (typeof input === "string") {
     sink.push(input);
     return;
   }
@@ -60,7 +70,7 @@ function collectStringValues(input: unknown, sink: string[]) {
     for (const item of input) collectStringValues(item, sink);
     return;
   }
-  if (input && typeof input === 'object') {
+  if (input && typeof input === "object") {
     for (const value of Object.values(input)) collectStringValues(value, sink);
   }
 }
@@ -73,7 +83,7 @@ export function extractAbiMethods(abi: unknown): string[] {
       for (const item of node) visit(item);
       return;
     }
-    if (!node || typeof node !== 'object') return;
+    if (!node || typeof node !== "object") return;
 
     const record = node as Record<string, unknown>;
     const directCandidates = [
@@ -86,18 +96,21 @@ export function extractAbiMethods(abi: unknown): string[] {
     ];
 
     for (const candidate of directCandidates) {
-      if (typeof candidate === 'string' && candidate.trim()) {
+      if (typeof candidate === "string" && candidate.trim()) {
         methods.add(candidate.trim());
       }
     }
 
     for (const [key, value] of Object.entries(record)) {
-      if (['functions', 'methods', 'entries'].includes(key) && Array.isArray(value)) {
+      if (
+        ["functions", "methods", "entries"].includes(key) &&
+        Array.isArray(value)
+      ) {
         for (const item of value) visit(item);
         continue;
       }
 
-      if (['name_scval', 'nameScVal', 'identifier'].includes(key)) {
+      if (["name_scval", "nameScVal", "identifier"].includes(key)) {
         const values: string[] = [];
         collectStringValues(value, values);
         for (const v of values) {
@@ -111,15 +124,27 @@ export function extractAbiMethods(abi: unknown): string[] {
   return [...methods].sort((a, b) => a.localeCompare(b));
 }
 
-function buildFallbackSourceCode(name: string, isVerified: boolean, abiMethods: string[], latestVersion: string) {
-  const versionLine = latestVersion ? `const VERSION: &str = "${latestVersion}";\n` : '';
-  const verifiedLine = isVerified ? 'const VERIFIED: bool = true;\n' : 'const VERIFIED: bool = false;\n';
+function buildFallbackSourceCode(
+  name: string,
+  isVerified: boolean,
+  abiMethods: string[],
+  latestVersion: string,
+) {
+  const versionLine = latestVersion
+    ? `const VERSION: &str = "${latestVersion}";\n`
+    : "";
+  const verifiedLine = isVerified
+    ? "const VERIFIED: bool = true;\n"
+    : "const VERIFIED: bool = false;\n";
   const functions = abiMethods
     .slice(0, 12)
-    .map((m) => `pub fn ${m}(env: Env) -> i128 {\n    env.ledger().sequence() as i128\n}\n`)
-    .join('\n');
+    .map(
+      (m) =>
+        `pub fn ${m}(env: Env) -> i128 {\n    env.ledger().sequence() as i128\n}\n`,
+    )
+    .join("\n");
 
-  return `// ${name}\n// Generated comparison fallback source\n\nuse soroban_sdk::{contract, contractimpl, Env};\n\n${versionLine}${verifiedLine}\n#[contract]\npub struct Contract;\n\n#[contractimpl]\nimpl Contract {\n${indentBlock(functions.trimEnd() || '  // No ABI methods available', 2)}\n}\n`;
+  return `// ${name}\n// Generated comparison fallback source\n\nuse soroban_sdk::{contract, contractimpl, Env};\n\n${versionLine}${verifiedLine}\n#[contract]\npub struct Contract;\n\n#[contractimpl]\nimpl Contract {\n${indentBlock(functions.trimEnd() || "  // No ABI methods available", 2)}\n}\n`;
 }
 
 export function toComparableContract(
@@ -132,19 +157,25 @@ export function toComparableContract(
 ): ComparableContract {
   const isVerified = Boolean(contract.is_verified);
   const versions = options?.versions ?? [];
-  const latestVersion = latestVersionFromVersions(versions)?.version ?? 'Unversioned';
+  const latestVersion =
+    latestVersionFromVersions(versions)?.version ?? "Unversioned";
   const abiMethods = extractAbiMethods(options?.abi);
   const sourceCode =
     options?.sourceCode && options.sourceCode.trim().length > 0
       ? options.sourceCode
-      : buildFallbackSourceCode(contract.name, isVerified, abiMethods, latestVersion);
+      : buildFallbackSourceCode(
+          contract.name,
+          isVerified,
+          abiMethods,
+          latestVersion,
+        );
 
   return {
     id: contract.id,
     name: contract.name,
     contractId: contract.contract_id,
     network: contract.network,
-    category: contract.category || 'Uncategorized',
+    category: contract.category || "Uncategorized",
     publisherId: contract.publisher_id,
     latestVersion,
     versionCount: versions.length,
@@ -173,46 +204,53 @@ export function toneForMetricCell(
 ): CellTone {
   const isAllEqual =
     allValues.length > 0 && allValues.every((v) => v === allValues[0]);
-  if (isAllEqual) return 'neutral';
+  if (isAllEqual) return "neutral";
 
-  if (metric === 'verification_status') {
+  if (metric === "verification_status") {
     const v = Boolean(value);
-    return v ? 'best' : 'worst';
+    return v ? "best" : "worst";
   }
 
-  if (metric === 'deployment_count' || metric === 'popularity_score' || metric === 'health_score') {
+  if (
+    metric === "deployment_count" ||
+    metric === "popularity_score" ||
+    metric === "health_score"
+  ) {
     const nums = allValues.map(Number).filter(isFinite);
     const max = Math.max(...nums);
-    if (max === 0) return 'neutral';
-    return Number(value) === max ? 'best' : 'different';
+    if (max === 0) return "neutral";
+    return Number(value) === max ? "best" : "different";
   }
 
-  if (metric === 'wasm_hash') {
-    return 'different';
+  if (metric === "wasm_hash") {
+    return "different";
   }
 
-  return 'different';
+  return "different";
 }
 
-export function getMetricValue(contract: ComparableContract, metric: ComparisonMetricKey): string | number | boolean {
+export function getMetricValue(
+  contract: ComparableContract,
+  metric: ComparisonMetricKey,
+): string | number | boolean {
   switch (metric) {
-    case 'contract_id':
+    case "contract_id":
       return contract.contractId;
-    case 'network':
+    case "network":
       return contract.network;
-    case 'category':
+    case "category":
       return contract.category;
-    case 'publisher':
+    case "publisher":
       return contract.publisherId;
-    case 'verification_status':
+    case "verification_status":
       return contract.isVerified;
-    case 'wasm_hash':
+    case "wasm_hash":
       return contract.wasmHash;
-    case 'deployment_count':
+    case "deployment_count":
       return contract.deploymentCount;
-    case 'popularity_score':
+    case "popularity_score":
       return contract.popularityScore;
-    case 'health_score':
+    case "health_score":
       return contract.healthScore;
   }
 }
@@ -228,7 +266,9 @@ export function uniqueMethodsPerContract(
   for (const contract of contracts) {
     const others = contracts.filter((c) => c.id !== contract.id);
     const otherMethods = new Set(others.flatMap((c) => c.abiMethods));
-    result[contract.id] = contract.abiMethods.filter((m) => !otherMethods.has(m));
+    result[contract.id] = contract.abiMethods.filter(
+      (m) => !otherMethods.has(m),
+    );
   }
   return result;
 }
@@ -236,20 +276,24 @@ export function uniqueMethodsPerContract(
 export function diffMethodSets(base: string[], other: string[]) {
   const baseSet = new Set(base);
   const otherSet = new Set(other);
-  const added = [...otherSet].filter((m) => !baseSet.has(m)).sort((a, b) => a.localeCompare(b));
-  const removed = [...baseSet].filter((m) => !otherSet.has(m)).sort((a, b) => a.localeCompare(b));
+  const added = [...otherSet]
+    .filter((m) => !baseSet.has(m))
+    .sort((a, b) => a.localeCompare(b));
+  const removed = [...baseSet]
+    .filter((m) => !otherSet.has(m))
+    .sort((a, b) => a.localeCompare(b));
   return { added, removed };
 }
 
 export function diffLines(aText: string, bText: string): DiffLine[] {
-  const a = normalizeNewlines(aText).split('\n');
-  const b = normalizeNewlines(bText).split('\n');
+  const a = normalizeNewlines(aText).split("\n");
+  const b = normalizeNewlines(bText).split("\n");
   const result = myersDiff(a, b);
   return result;
 }
 
 function normalizeNewlines(s: string) {
-  return s.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+  return s.replaceAll("\r\n", "\n").replaceAll("\r", "\n");
 }
 
 function myersDiff(a: string[], b: string[]): DiffLine[] {
@@ -282,7 +326,11 @@ function myersDiff(a: string[], b: string[]): DiffLine[] {
   return [];
 }
 
-function backtrackDiff(a: string[], b: string[], trace: Record<number, number>[]): DiffLine[] {
+function backtrackDiff(
+  a: string[],
+  b: string[],
+  trace: Record<number, number>[],
+): DiffLine[] {
   let x = a.length;
   let y = b.length;
   const result: DiffLine[] = [];
@@ -303,26 +351,25 @@ function backtrackDiff(a: string[], b: string[], trace: Record<number, number>[]
     const prevY = prevX - prevK;
 
     while (x > prevX && y > prevY) {
-      result.push({ type: 'context', value: a[x - 1] });
+      result.push({ type: "context", value: a[x - 1] });
       x--;
       y--;
     }
 
     if (x > prevX) {
-      result.push({ type: 'remove', value: a[x - 1] });
+      result.push({ type: "remove", value: a[x - 1] });
       x--;
     } else if (y > prevY) {
-      result.push({ type: 'add', value: b[y - 1] });
+      result.push({ type: "add", value: b[y - 1] });
       y--;
     }
   }
 
   while (x > 0 && y > 0) {
-    result.push({ type: 'context', value: a[x - 1] });
+    result.push({ type: "context", value: a[x - 1] });
     x--;
     y--;
   }
 
   return result.reverse();
 }
-

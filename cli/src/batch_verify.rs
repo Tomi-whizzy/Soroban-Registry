@@ -118,7 +118,8 @@ pub async fn run_batch_verify(
     let response = client
         .post(format!("{}/api/contracts/batch-verify", api_url))
         .json(&request)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to reach registry API — is the server running?")?;
 
     if !response.status().is_success() {

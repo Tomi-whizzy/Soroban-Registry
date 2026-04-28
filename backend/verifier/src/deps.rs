@@ -16,10 +16,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DependencyError {
     /// A contract depends on an ID that is not present in the graph.
-    MissingDependency {
-        contract: String,
-        missing: String,
-    },
+    MissingDependency { contract: String, missing: String },
     /// The dependency graph contains a cycle.
     CircularDependency {
         /// Contracts involved in the cycle (in detection order).
@@ -31,7 +28,10 @@ impl std::fmt::Display for DependencyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::MissingDependency { contract, missing } => {
-                write!(f, "contract '{contract}' depends on '{missing}' which is not in the graph")
+                write!(
+                    f,
+                    "contract '{contract}' depends on '{missing}' which is not in the graph"
+                )
             }
             Self::CircularDependency { cycle } => {
                 write!(f, "circular dependency detected: {}", cycle.join(" -> "))
@@ -56,9 +56,7 @@ impl std::fmt::Display for DependencyError {
 /// 3. Repeatedly dequeue a node, add it to the result, and decrement the
 ///    in-degree of its dependents.
 /// 4. If the result length < graph length, a cycle exists.
-pub fn resolve(
-    graph: &HashMap<String, Vec<String>>,
-) -> Result<Vec<String>, DependencyError> {
+pub fn resolve(graph: &HashMap<String, Vec<String>>) -> Result<Vec<String>, DependencyError> {
     // Validate: every referenced dependency must exist in the graph.
     for (contract, deps) in graph {
         for dep in deps {
@@ -81,7 +79,11 @@ pub fn resolve(
 
     // Enqueue zero-in-degree nodes (sorted for deterministic output).
     let mut queue: VecDeque<&str> = {
-        let mut v: Vec<&str> = in_degree.iter().filter(|(_, &d)| d == 0).map(|(&k, _)| k).collect();
+        let mut v: Vec<&str> = in_degree
+            .iter()
+            .filter(|(_, &d)| d == 0)
+            .map(|(&k, _)| k)
+            .collect();
         v.sort_unstable();
         VecDeque::from(v)
     };
@@ -126,7 +128,10 @@ mod tests {
     use super::*;
 
     fn graph(pairs: &[(&str, &[&str])]) -> HashMap<String, Vec<String>> {
-        pairs.iter().map(|(k, vs)| (k.to_string(), vs.iter().map(|v| v.to_string()).collect())).collect()
+        pairs
+            .iter()
+            .map(|(k, vs)| (k.to_string(), vs.iter().map(|v| v.to_string()).collect()))
+            .collect()
     }
 
     #[test]
@@ -181,7 +186,10 @@ mod tests {
     #[test]
     fn self_loop_detected_as_cycle() {
         let g = graph(&[("a", &["a"])]);
-        assert!(matches!(resolve(&g), Err(DependencyError::CircularDependency { .. })));
+        assert!(matches!(
+            resolve(&g),
+            Err(DependencyError::CircularDependency { .. })
+        ));
     }
 
     #[test]

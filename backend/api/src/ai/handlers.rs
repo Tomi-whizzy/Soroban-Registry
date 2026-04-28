@@ -2,18 +2,18 @@ use crate::ai::{
     context_manager::ContextManager,
     models::{ChatMessage, ChatSession},
     prompt_builder::PromptBuilder,
-    service::{AIService, AIRequest, ContractContext},
+    service::{AIRequest, AIService, ContractContext},
 };
 use crate::error::ApiError;
 use crate::state::AppState;
 use axum::{
-    extract::{Path, Query, State, Json},
+    extract::{Json, Path, Query, State},
     http::StatusCode,
 };
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::sync::Arc;
 use uuid::Uuid;
-use serde_json::Value;
 
 // Request/Response types for AI endpoints
 
@@ -71,16 +71,22 @@ pub async fn ai_chat_handler(
     Json(payload): Json<ChatRequest>,
 ) -> Result<Json<ChatResponse>, ApiError> {
     // Validate AI is configured
-    let ai_service = state.ai_service.as_ref()
-        .ok_or_else(|| ApiError::service_unavailable("AI_SERVICE_NOT_CONFIGURED", "AI service is not configured. Set OPENAI_API_KEY or ANTHROPIC_API_KEY"))?;
+    let ai_service = state.ai_service.as_ref().ok_or_else(|| {
+        ApiError::service_unavailable(
+            "AI_SERVICE_NOT_CONFIGURED",
+            "AI service is not configured. Set OPENAI_API_KEY or ANTHROPIC_API_KEY",
+        )
+    })?;
 
     // Get or create session
     let context_manager = ContextManager::new(state.db.clone());
     let session_id = payload.session_id.unwrap_or_else(Uuid::new_v4);
-    
+
     // Get contract context if provided
     let contract_context = if let Some(contract_id) = payload.contract_id {
-        let ctx = context_manager.get_contract_context(contract_id).await
+        let ctx = context_manager
+            .get_contract_context(contract_id)
+            .await
             .map_err(|e| ApiError::internal_error("CONTEXT_ERROR", e.to_string()))?;
         ctx
     } else {
@@ -88,10 +94,7 @@ pub async fn ai_chat_handler(
     };
 
     // Build messages with context
-    let messages = PromptBuilder::build_chat_prompt(
-        &payload.messages,
-        contract_context.as_ref()
-    );
+    let messages = PromptBuilder::build_chat_prompt(&payload.messages, contract_context.as_ref());
 
     // Call AI
     let ai_request = crate::ai::service::AIRequest {
@@ -104,37 +107,48 @@ pub async fn ai_chat_handler(
     };
 
     let start = std::time::Instant::now();
-    let ai_response = ai_service.chat(ai_request)
+    let ai_response = ai_service
+        .chat(ai_request)
         .await
         .map_err(|e| ApiError::internal_error("AI_API_ERROR", e.to_string()))?;
 
     let response_time = start.elapsed().as_millis() as u64;
 
     // Save user message
-    if let Err(e) = context_manager.add_message(
-        session_id,
-        "user",
-        &payload.messages.last().map(|m| m.content.as_str()).unwrap_or(""),
-        None,
-        None,
-        None,
-        None,
-        None,
-    ).await {
+    if let Err(e) = context_manager
+        .add_message(
+            session_id,
+            "user",
+            &payload
+                .messages
+                .last()
+                .map(|m| m.content.as_str())
+                .unwrap_or(""),
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .await
+    {
         warn!("Failed to save user message: {}", e);
     }
 
     // Save assistant message
-    if let Err(e) = context_manager.add_message(
-        session_id,
-        "assistant",
-        &ai_response.content,
-        None,
-        ai_response.token_count.map(|c| c as i32),
-        Some(&ai_response.model_used),
-        Some(response_time as i32),
-        Some(serde_json::json!({"tokens": ai_response.token_count})),
-    ).await {
+    if let Err(e) = context_manager
+        .add_message(
+            session_id,
+            "assistant",
+            &ai_response.content,
+            None,
+            ai_response.token_count.map(|c| c as i32),
+            Some(&ai_response.model_used),
+            Some(response_time as i32),
+            Some(serde_json::json!({"tokens": ai_response.token_count})),
+        )
+        .await
+    {
         warn!("Failed to save assistant message: {}", e);
     }
 
@@ -156,17 +170,16 @@ pub async fn ai_chat_ws_handler(
     ws.on_upgrade(|socket| handle_ai_chat_ws(socket, state))
 }
 
-async fn handle_ai_chat_ws(
-    socket: axum::extract::ws::WebSocket,
-    state: AppState,
-) {
+async fn handle_ai_chat_ws(socket: axum::extract::ws::WebSocket, state: AppState) {
     let (mut sender, mut receiver) = socket.split();
     let ai_service = match state.ai_service.as_ref() {
         Some(s) => s.clone(),
         None => {
-            let _ = sender.send(axum::extract::ws::Message::Text(
-                serde_json::json!({"error": "AI service not configured"}).to_string()
-            )).await;
+            let _ = sender
+                .send(axum::extract::ws::Message::Text(
+                    serde_json::json!({"error": "AI service not configured"}).to_string(),
+                ))
+                .await;
             return;
         }
     };
@@ -180,7 +193,7 @@ async fn handle_ai_chat_ws(
                 match request {
                     Ok(payload) => {
                         let session_id = payload.session_id.unwrap_or_else(Uuid::new_v4);
-                        
+
                         // Get contract context if needed
                         let contract_context = if let Some(contract_id) = payload.contract_id {
                             context_manager.get_contract_context(contract_id).await.ok()
@@ -191,7 +204,7 @@ async fn handle_ai_chat_ws(
                         // Build messages
                         let messages = PromptBuilder::build_chat_prompt(
                             &payload.messages,
-                            contract_context.as_ref()
+                            contract_context.as_ref(),
                         );
 
                         // Create AI request
@@ -215,18 +228,20 @@ async fn handle_ai_chat_ws(
                                         "model": response.model_used,
                                         "response_time_ms": response.response_time_ms,
                                     });
-                                    let _ = sender.send(axum::extract::ws::Message::Text(
-                                        resp_msg.to_string()
-                                    )).await;
+                                    let _ = sender
+                                        .send(axum::extract::ws::Message::Text(
+                                            resp_msg.to_string(),
+                                        ))
+                                        .await;
                                 }
                                 Err(e) => {
                                     let err_msg = serde_json::json!({
                                         "type": "error",
                                         "error": e.to_string(),
                                     });
-                                    let _ = sender.send(axum::extract::ws::Message::Text(
-                                        err_msg.to_string()
-                                    )).await;
+                                    let _ = sender
+                                        .send(axum::extract::ws::Message::Text(err_msg.to_string()))
+                                        .await;
                                 }
                             }
                         });
@@ -236,7 +251,9 @@ async fn handle_ai_chat_ws(
                             "type": "error",
                             "error": format!("Invalid request: {}", e),
                         });
-                        let _ = sender.send(axum::extract::ws::Message::Text(err_msg.to_string())).await;
+                        let _ = sender
+                            .send(axum::extract::ws::Message::Text(err_msg.to_string()))
+                            .await;
                     }
                 }
             }
@@ -252,8 +269,9 @@ pub async fn analyze_contract_handler(
     Path(contract_id): Path<String>,
     Query(params): Query<AnalyzeRequest>,
 ) -> Result<Json<AnalyzeResponse>, ApiError> {
-    let ai_service = state.ai_service.as_ref()
-        .ok_or_else(|| ApiError::service_unavailable("AI_SERVICE_NOT_CONFIGURED", "AI service not configured"))?;
+    let ai_service = state.ai_service.as_ref().ok_or_else(|| {
+        ApiError::service_unavailable("AI_SERVICE_NOT_CONFIGURED", "AI service not configured")
+    })?;
 
     let contract_uuid = Uuid::parse_str(&contract_id)
         .map_err(|_| ApiError::bad_request("INVALID_CONTRACT_ID", "Invalid contract ID format"))?;
@@ -269,7 +287,9 @@ pub async fn analyze_contract_handler(
     .await
     .map_err(|e| ApiError::internal_error("DB_ERROR", e.to_string()))?
     .flatten()
-    .ok_or_else(|| ApiError::not_found("CONTRACT_NOT_FOUND", "Contract or source code not found"))?;
+    .ok_or_else(|| {
+        ApiError::not_found("CONTRACT_NOT_FOUND", "Contract or source code not found")
+    })?;
 
     // Get contract metadata
     let contract = sqlx::query_as!(
@@ -300,9 +320,10 @@ pub async fn analyze_contract_handler(
         &ctx.tags,
     );
 
-    let messages = vec![
-        ChatMessage { role: "user".to_string(), content: prompt }
-    ];
+    let messages = vec![ChatMessage {
+        role: "user".to_string(),
+        content: prompt,
+    }];
 
     let ai_req = crate::ai::service::AIRequest {
         messages,
@@ -314,7 +335,9 @@ pub async fn analyze_contract_handler(
     };
 
     let start = std::time::Instant::now();
-    let response = ai_service.chat(ai_req).await
+    let response = ai_service
+        .chat(ai_req)
+        .await
         .map_err(|e| ApiError::internal_error("AI_ERROR", e.to_string()))?;
 
     Ok(Json(AnalyzeResponse {
@@ -331,8 +354,9 @@ pub async fn check_vulnerabilities_handler(
     Path(contract_id): Path<String>,
     Query(params): Query<VulnerabilityRequest>,
 ) -> Result<Json<VulnerabilityResponse>, ApiError> {
-    let ai_service = state.ai_service.as_ref()
-        .ok_or_else(|| ApiError::service_unavailable("AI_SERVICE_NOT_CONFIGURED", "AI service not configured"))?;
+    let ai_service = state.ai_service.as_ref().ok_or_else(|| {
+        ApiError::service_unavailable("AI_SERVICE_NOT_CONFIGURED", "AI service not configured")
+    })?;
 
     let contract_uuid = Uuid::parse_str(&contract_id)
         .map_err(|_| ApiError::bad_request("INVALID_CONTRACT_ID", "Invalid contract ID format"))?;
@@ -347,12 +371,15 @@ pub async fn check_vulnerabilities_handler(
     .await
     .map_err(|e| ApiError::internal_error("DB_ERROR", e.to_string()))?
     .flatten()
-    .ok_or_else(|| ApiError::not_found("CONTRACT_NOT_FOUND", "Contract or source code not found"))?;
+    .ok_or_else(|| {
+        ApiError::not_found("CONTRACT_NOT_FOUND", "Contract or source code not found")
+    })?;
 
     let prompt = PromptBuilder::build_vulnerability_prompt(&contract_code);
-    let messages = vec![
-        ChatMessage { role: "user".to_string(), content: prompt }
-    ];
+    let messages = vec![ChatMessage {
+        role: "user".to_string(),
+        content: prompt,
+    }];
 
     let ai_req = crate::ai::service::AIRequest {
         messages,
@@ -364,7 +391,9 @@ pub async fn check_vulnerabilities_handler(
     };
 
     let start = std::time::Instant::now();
-    let response = ai_service.chat(ai_req).await
+    let response = ai_service
+        .chat(ai_req)
+        .await
         .map_err(|e| ApiError::internal_error("AI_ERROR", e.to_string()))?;
 
     Ok(Json(VulnerabilityResponse {
@@ -381,8 +410,9 @@ pub async fn explain_contract_handler(
     Path(contract_id): Path<String>,
     Query(params): Query<ExplainRequest>,
 ) -> Result<Json<ExplainResponse>, ApiError> {
-    let ai_service = state.ai_service.as_ref()
-        .ok_or_else(|| ApiError::service_unavailable("AI_SERVICE_NOT_CONFIGURED", "AI service not configured"))?;
+    let ai_service = state.ai_service.as_ref().ok_or_else(|| {
+        ApiError::service_unavailable("AI_SERVICE_NOT_CONFIGURED", "AI service not configured")
+    })?;
 
     let contract_uuid = Uuid::parse_str(&contract_id)
         .map_err(|_| ApiError::bad_request("INVALID_CONTRACT_ID", "Invalid contract ID format"))?;
@@ -397,12 +427,15 @@ pub async fn explain_contract_handler(
     .await
     .map_err(|e| ApiError::internal_error("DB_ERROR", e.to_string()))?
     .flatten()
-    .ok_or_else(|| ApiError::not_found("CONTRACT_NOT_FOUND", "Contract or source code not found"))?;
+    .ok_or_else(|| {
+        ApiError::not_found("CONTRACT_NOT_FOUND", "Contract or source code not found")
+    })?;
 
     let prompt = PromptBuilder::build_explanation_prompt(&contract_code, params.focus.as_deref());
-    let messages = vec![
-        ChatMessage { role: "user".to_string(), content: prompt }
-    ];
+    let messages = vec![ChatMessage {
+        role: "user".to_string(),
+        content: prompt,
+    }];
 
     let ai_req = crate::ai::service::AIRequest {
         messages,
@@ -414,7 +447,9 @@ pub async fn explain_contract_handler(
     };
 
     let start = std::time::Instant::now();
-    let response = ai_service.chat(ai_req).await
+    let response = ai_service
+        .chat(ai_req)
+        .await
         .map_err(|e| ApiError::internal_error("AI_ERROR", e.to_string()))?;
 
     Ok(Json(ExplainResponse {
@@ -431,8 +466,9 @@ pub async fn suggest_code_handler(
     Path(contract_id): Path<String>,
     Json(payload): Json<SuggestRequest>,
 ) -> Result<Json<SuggestResponse>, ApiError> {
-    let ai_service = state.ai_service.as_ref()
-        .ok_or_else(|| ApiError::service_unavailable("AI_SERVICE_NOT_CONFIGURED", "AI service not configured"))?;
+    let ai_service = state.ai_service.as_ref().ok_or_else(|| {
+        ApiError::service_unavailable("AI_SERVICE_NOT_CONFIGURED", "AI service not configured")
+    })?;
 
     let contract_uuid = Uuid::parse_str(&contract_id)
         .map_err(|_| ApiError::bad_request("INVALID_CONTRACT_ID", "Invalid contract ID format"))?;
@@ -447,17 +483,20 @@ pub async fn suggest_code_handler(
     .await
     .map_err(|e| ApiError::internal_error("DB_ERROR", e.to_string()))?
     .flatten()
-    .ok_or_else(|| ApiError::not_found("CONTRACT_NOT_FOUND", "Contract or source code not found"))?;
+    .ok_or_else(|| {
+        ApiError::not_found("CONTRACT_NOT_FOUND", "Contract or source code not found")
+    })?;
 
     let prompt = PromptBuilder::build_suggestion_prompt(
         &contract_code,
         &payload.request,
-        payload.context.as_deref()
+        payload.context.as_deref(),
     );
 
-    let messages = vec![
-        ChatMessage { role: "user".to_string(), content: prompt }
-    ];
+    let messages = vec![ChatMessage {
+        role: "user".to_string(),
+        content: prompt,
+    }];
 
     let ai_req = crate::ai::service::AIRequest {
         messages,
@@ -469,7 +508,9 @@ pub async fn suggest_code_handler(
     };
 
     let start = std::time::Instant::now();
-    let response = ai_service.chat(ai_req).await
+    let response = ai_service
+        .chat(ai_req)
+        .await
         .map_err(|e| ApiError::internal_error("AI_ERROR", e.to_string()))?;
 
     Ok(Json(SuggestResponse {
@@ -486,10 +527,12 @@ pub async fn get_chat_sessions_handler(
     Query(params): Query<GetSessionsQuery>,
 ) -> Result<Json<Vec<ChatSession>>, ApiError> {
     let context_manager = ContextManager::new(state.db.clone());
-    let user_id = params.user_id
+    let user_id = params
+        .user_id
         .ok_or_else(|| ApiError::bad_request("MISSING_USER_ID", "user_id is required"))?;
 
-    let sessions = context_manager.get_user_sessions(user_id, params.limit.unwrap_or(20))
+    let sessions = context_manager
+        .get_user_sessions(user_id, params.limit.unwrap_or(20))
         .await
         .map_err(|e| ApiError::internal_error("DB_ERROR", e.to_string()))?;
 
@@ -502,8 +545,9 @@ pub async fn get_chat_session_handler(
     Path(session_id): Path<Uuid>,
 ) -> Result<Json<SessionResponse>, ApiError> {
     let context_manager = ContextManager::new(state.db.clone());
-    
-    let (session, messages) = context_manager.get_session_with_messages(session_id)
+
+    let (session, messages) = context_manager
+        .get_session_with_messages(session_id)
         .await
         .map_err(|e| ApiError::not_found("SESSION_NOT_FOUND", e.to_string()))?;
 

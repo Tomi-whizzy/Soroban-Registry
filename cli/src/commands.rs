@@ -163,7 +163,8 @@ pub async fn search(
     let response = client
         .get(format!("{}/api/contracts", api_url))
         .query(&params)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to search contracts")?;
 
     let data: serde_json::Value = response.json().await?;
@@ -352,7 +353,8 @@ pub async fn upgrade_analyze(
     let url = format!("{}/api/contract_versions/{}", api_url, old_id);
     let old_res = client
         .get(&url)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("failed to fetch old version")?;
     if old_res.status() == StatusCode::NOT_FOUND {
         anyhow::bail!(
@@ -365,7 +367,8 @@ pub async fn upgrade_analyze(
     let url2 = format!("{}/api/contract_versions/{}", api_url, new_id);
     let new_res = client
         .get(&url2)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("failed to fetch new version")?;
     if new_res.status() == StatusCode::NOT_FOUND {
         anyhow::bail!(
@@ -523,7 +526,8 @@ pub async fn publish(
     let response = client
         .post(&url)
         .json(&payload)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to publish contract")?;
 
     if !response.status().is_success() {
@@ -1002,7 +1006,8 @@ pub async fn contract_list(
     let response = client
         .get(&url)
         .query(&query)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to list contracts")?;
 
     if !response.status().is_success() {
@@ -1087,10 +1092,11 @@ pub async fn contract_list(
 pub async fn contract_info(api_url: &str, id: &str) -> Result<()> {
     let client = crate::net::client();
     let url = format!("{}/api/contracts/{}", api_url.trim_end_matches('/'), id);
-    
+
     let response = client
         .get(&url)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to fetch contract info")?;
 
     if !response.status().is_success() {
@@ -1101,29 +1107,49 @@ pub async fn contract_info(api_url: &str, id: &str) -> Result<()> {
     }
 
     let data: serde_json::Value = response.json().await?;
-    
+
     println!("\n{}", "Contract Details".bold().cyan());
     println!("{}", "=".repeat(80).cyan());
-    
-    println!("{:<20} {}", "Name:".bold(), data["name"].as_str().unwrap_or("Unknown"));
-    println!("{:<20} {}", "ID:".bold(), data["contract_id"].as_str().unwrap_or("Unknown"));
-    println!("{:<20} {}", "Network:".bold(), data["network"].as_str().unwrap_or("Unknown"));
-    println!("{:<20} {}", "Category:".bold(), data["category"].as_str().unwrap_or("None"));
-    
+
+    println!(
+        "{:<20} {}",
+        "Name:".bold(),
+        data["name"].as_str().unwrap_or("Unknown")
+    );
+    println!(
+        "{:<20} {}",
+        "ID:".bold(),
+        data["contract_id"].as_str().unwrap_or("Unknown")
+    );
+    println!(
+        "{:<20} {}",
+        "Network:".bold(),
+        data["network"].as_str().unwrap_or("Unknown")
+    );
+    println!(
+        "{:<20} {}",
+        "Category:".bold(),
+        data["category"].as_str().unwrap_or("None")
+    );
+
     let verified = if data["is_verified"].as_bool().unwrap_or(false) {
         "Yes".green()
     } else {
         "No".red()
     };
     println!("{:<20} {}", "Verified:".bold(), verified);
-    
+
     if let Some(desc) = data["description"].as_str() {
         println!("{:<20} {}", "Description:".bold(), desc);
     }
-    
+
     println!("\n{}", "Resources".bold().yellow());
-    println!("{:<20} {}", "WASM Hash:".bold(), data["wasm_hash"].as_str().unwrap_or("N/A"));
-    
+    println!(
+        "{:<20} {}",
+        "WASM Hash:".bold(),
+        data["wasm_hash"].as_str().unwrap_or("N/A")
+    );
+
     if let Some(abi) = data["abi"].as_object() {
         println!("{:<20} {} methods", "ABI:".bold(), abi.len());
     }
@@ -1184,7 +1210,8 @@ pub async fn breaking_changes(api_url: &str, old_id: &str, new_id: &str, json: b
 
     let response = client
         .get(&url)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to fetch breaking changes")?;
 
     if !response.status().is_success() {
@@ -1285,7 +1312,8 @@ pub async fn migrate(
     let response = client
         .post(&create_url)
         .json(&payload)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to contact registry API")?;
 
     if !response.status().is_success() {
@@ -1354,7 +1382,8 @@ pub async fn migrate(
     let update_res = client
         .put(&update_url)
         .json(&update_payload)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to update migration status")?;
 
     if !update_res.status().is_success() {
@@ -1516,7 +1545,8 @@ pub async fn trust_score(api_url: &str, contract_id: &str, network: Network) -> 
     let resp = client
         .get(&url)
         .query(&[("network", network.to_string())])
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to reach registry API")?;
 
     if !resp.status().is_success() {
@@ -1636,7 +1666,8 @@ pub async fn deps_list(api_url: &str, contract_id: &str) -> Result<()> {
 
     let response = client
         .get(&url)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to fetch contract dependencies")?;
 
     if !response.status().is_success() {
@@ -1913,7 +1944,8 @@ pub async fn config_get(api_url: &str, contract_id: &str, environment: &str) -> 
 
     let response = client
         .get(&url)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to fetch configuration")?;
 
     if !response.status().is_success() {
@@ -1984,7 +2016,8 @@ pub async fn config_set(
     let response = client
         .post(&url)
         .json(&payload)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to set configuration")?;
 
     if !response.status().is_success() {
@@ -2020,7 +2053,8 @@ pub async fn config_history(api_url: &str, contract_id: &str, environment: &str)
 
     let response = client
         .get(&url)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to fetch configuration history")?;
 
     if !response.status().is_success() {
@@ -2082,7 +2116,8 @@ pub async fn config_rollback(
     let response = client
         .post(&url)
         .json(&payload)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to rollback configuration")?;
 
     if !response.status().is_success() {
@@ -2198,8 +2233,12 @@ fn sanitize_for_filename(input: &str) -> String {
 fn state_file_path(contract_id: &str, network: Network) -> Result<PathBuf> {
     let root = state_root_dir()?;
     let network_dir = root.join(network.to_string());
-    fs::create_dir_all(&network_dir)
-        .with_context(|| format!("Failed to create state directory: {}", network_dir.display()))?;
+    fs::create_dir_all(&network_dir).with_context(|| {
+        format!(
+            "Failed to create state directory: {}",
+            network_dir.display()
+        )
+    })?;
     let file_name = format!("{}.json", sanitize_for_filename(contract_id));
     Ok(network_dir.join(file_name))
 }
@@ -2228,7 +2267,8 @@ fn load_local_state(contract_id: &str, network: Network) -> Result<LocalContract
 fn save_local_state(store: &LocalContractStateStore, network: Network) -> Result<()> {
     let path = state_file_path(&store.contract_id, network)?;
     let data = serde_json::to_string_pretty(store).context("Failed to serialize state")?;
-    fs::write(&path, data).with_context(|| format!("Failed to write state file: {}", path.display()))
+    fs::write(&path, data)
+        .with_context(|| format!("Failed to write state file: {}", path.display()))
 }
 
 fn parse_state_value(raw: &str) -> serde_json::Value {
@@ -2286,7 +2326,8 @@ async fn try_remote_state_set(
     let response = match crate::net::client()
         .put(url)
         .json(&json!({ "value": value }))
-        .send_with_retry().await
+        .send_with_retry()
+        .await
     {
         Ok(resp) => resp,
         Err(_) => return Ok(false),
@@ -2336,7 +2377,11 @@ pub async fn state_get(
     println!("\n{}", "Contract State Value".bold().cyan());
     println!("{}", "=".repeat(80).cyan());
     println!("{}: {}", "Contract".bold(), contract_id);
-    println!("{}: {}", "Network".bold(), network.to_string().bright_blue());
+    println!(
+        "{}: {}",
+        "Network".bold(),
+        network.to_string().bright_blue()
+    );
     println!("{}: {}", "Key".bold(), key.bright_magenta());
     println!("{}: {}", "Source".bold(), source);
     println!(
@@ -2398,7 +2443,11 @@ pub async fn state_set(
     println!("\n{}", "State Updated".bold().green());
     println!("{}", "=".repeat(80).cyan());
     println!("{}: {}", "Contract".bold(), contract_id);
-    println!("{}: {}", "Network".bold(), network.to_string().bright_blue());
+    println!(
+        "{}: {}",
+        "Network".bold(),
+        network.to_string().bright_blue()
+    );
     println!("{}: {}", "Key".bold(), key.bright_magenta());
     println!("{}: {}", "Remote Applied".bold(), remote_applied);
     println!(
@@ -2431,7 +2480,11 @@ pub fn state_dump(contract_id: &str, network: Network, json_output: bool) -> Res
     println!("\n{}", "Contract State Dump".bold().cyan());
     println!("{}", "=".repeat(80).cyan());
     println!("{}: {}", "Contract".bold(), contract_id);
-    println!("{}: {}", "Network".bold(), network.to_string().bright_blue());
+    println!(
+        "{}: {}",
+        "Network".bold(),
+        network.to_string().bright_blue()
+    );
     println!("{}: {}", "Entries".bold(), store.values.len());
     println!("{}: {}", "Snapshots".bold(), store.snapshots.len());
     println!("{}: {}", "History Entries".bold(), store.history.len());
@@ -2496,7 +2549,11 @@ pub fn state_snapshot_create(
     println!("\n{}", "State Snapshot Created".bold().green());
     println!("{}", "=".repeat(80).cyan());
     println!("{}: {}", "Contract".bold(), contract_id);
-    println!("{}: {}", "Network".bold(), network.to_string().bright_blue());
+    println!(
+        "{}: {}",
+        "Network".bold(),
+        network.to_string().bright_blue()
+    );
     println!("{}: {}", "Snapshot ID".bold(), snapshot.id.bright_magenta());
     println!(
         "{}: {}",
@@ -2714,7 +2771,8 @@ pub async fn scan_deps(
     let response = client
         .post(&url)
         .json(&payload)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to run dependency scan")?;
 
     if !response.status().is_success() {
@@ -2972,7 +3030,8 @@ pub async fn validate_call(
     let response = client
         .post(&url)
         .json(&body)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to validate contract call")?;
 
     let status = response.status();
@@ -3089,7 +3148,8 @@ pub async fn generate_bindings(
 
     let response = client
         .get(&url)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to generate bindings")?;
 
     let status = response.status();
@@ -3127,7 +3187,8 @@ pub async fn list_functions(api_url: &str, contract_id: &str) -> Result<()> {
 
     let response = client
         .get(&url)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to list contract functions")?;
 
     let status = response.status();
@@ -3224,7 +3285,8 @@ pub async fn info(
     let metadata_res = client
         .get(&metadata_url)
         .query(&[("network", network.to_string())])
-        .send_with_retry().await?;
+        .send_with_retry()
+        .await?;
 
     if !metadata_res.status().is_success() {
         anyhow::bail!(
@@ -3649,7 +3711,8 @@ pub async fn snapshot_create(api_url: &str, contract_id: &str) -> Result<()> {
 
     let response = client
         .post(&url)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to create snapshot")?;
 
     if !response.status().is_success() {
@@ -3662,9 +3725,21 @@ pub async fn snapshot_create(api_url: &str, contract_id: &str) -> Result<()> {
     let snapshot: serde_json::Value = response.json().await?;
 
     println!("{}", "✓ Snapshot created successfully!".green().bold());
-    println!("  {}: {}", "ID".bold(), snapshot["id"].as_str().unwrap_or(""));
-    println!("  {}: {}", "Version".bold(), snapshot["version_number"].as_i64().unwrap_or(0));
-    println!("  {}: {}", "Created At".bold(), snapshot["created_at"].as_str().unwrap_or(""));
+    println!(
+        "  {}: {}",
+        "ID".bold(),
+        snapshot["id"].as_str().unwrap_or("")
+    );
+    println!(
+        "  {}: {}",
+        "Version".bold(),
+        snapshot["version_number"].as_i64().unwrap_or(0)
+    );
+    println!(
+        "  {}: {}",
+        "Created At".bold(),
+        snapshot["created_at"].as_str().unwrap_or("")
+    );
     println!();
 
     Ok(())
@@ -3676,7 +3751,8 @@ pub async fn snapshot_list(api_url: &str, contract_id: &str) -> Result<()> {
 
     let response = client
         .get(&url)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to list snapshots")?;
 
     if !response.status().is_success() {
@@ -3711,11 +3787,15 @@ pub async fn snapshot_list(api_url: &str, contract_id: &str) -> Result<()> {
 
 pub async fn snapshot_get(api_url: &str, contract_id: &str, timestamp: &str) -> Result<()> {
     let client = crate::net::client();
-    let url = format!("{}/api/contracts/{}/snapshots?timestamp={}", api_url, contract_id, timestamp);
+    let url = format!(
+        "{}/api/contracts/{}/snapshots?timestamp={}",
+        api_url, contract_id, timestamp
+    );
 
     let response = client
         .get(&url)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to fetch snapshot")?;
 
     if !response.status().is_success() {
@@ -3736,11 +3816,15 @@ pub async fn snapshot_get(api_url: &str, contract_id: &str, timestamp: &str) -> 
 
 pub async fn snapshot_diff(api_url: &str, contract_id: &str, v1: i32, v2: i32) -> Result<()> {
     let client = crate::net::client();
-    let url = format!("{}/api/contracts/{}/versions/{}/diff/{}", api_url, contract_id, v1, v2);
+    let url = format!(
+        "{}/api/contracts/{}/versions/{}/diff/{}",
+        api_url, contract_id, v1, v2
+    );
 
     let response = client
         .get(&url)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to fetch diff")?;
 
     if !response.status().is_success() {
@@ -3752,7 +3836,10 @@ pub async fn snapshot_diff(api_url: &str, contract_id: &str, v1: i32, v2: i32) -
 
     let diff: shared::models::VersionDiff = response.json().await?;
 
-    println!("\n{}", format!("Diff between v{} and v{}:", v1, v2).bold().cyan());
+    println!(
+        "\n{}",
+        format!("Diff between v{} and v{}:", v1, v2).bold().cyan()
+    );
     println!("{}", "=".repeat(80).cyan());
 
     if diff.added.is_empty() && diff.removed.is_empty() && diff.modified.is_empty() {
@@ -3761,13 +3848,29 @@ pub async fn snapshot_diff(api_url: &str, contract_id: &str, v1: i32, v2: i32) -
     }
 
     for add in diff.added {
-        println!("  {} {}: {}", "+".green().bold(), add.field.bold(), add.to.to_string().green());
+        println!(
+            "  {} {}: {}",
+            "+".green().bold(),
+            add.field.bold(),
+            add.to.to_string().green()
+        );
     }
     for rm in diff.removed {
-        println!("  {} {}: {}", "-".red().bold(), rm.field.bold(), rm.from.to_string().red());
+        println!(
+            "  {} {}: {}",
+            "-".red().bold(),
+            rm.field.bold(),
+            rm.from.to_string().red()
+        );
     }
     for modif in diff.modified {
-        println!("  {} {}: {} -> {}", "~".yellow().bold(), modif.field.bold(), modif.from.to_string().red(), modif.to.to_string().green());
+        println!(
+            "  {} {}: {} -> {}",
+            "~".yellow().bold(),
+            modif.field.bold(),
+            modif.from.to_string().red(),
+            modif.to.to_string().green()
+        );
     }
 
     println!();
@@ -3785,7 +3888,7 @@ pub async fn stats(
 ) -> Result<()> {
     let client = crate::net::client();
     let url = format!("{}/api/stats?timeframe={}", api_url, timeframe);
-    
+
     let response = client
         .get(&url)
         .send_with_retry()
@@ -3821,40 +3924,64 @@ pub async fn stats(
 
 fn format_stats_table(stats: &serde_json::Value) -> String {
     let mut out = String::new();
-    
+
     // Header
-    out.push_str(&format!("\n{}", "Soroban Registry Statistics".bold().cyan()));
+    out.push_str(&format!(
+        "\n{}",
+        "Soroban Registry Statistics".bold().cyan()
+    ));
     out.push_str(&format!("\n{}\n", "=".repeat(60).cyan()));
-    
+
     // Basic counts
     if let Some(total) = stats["total_contracts"].as_i64() {
-        out.push_str(&format!("{}\n", format_kv("Total Contracts", &total.to_string())));
+        out.push_str(&format!(
+            "{}\n",
+            format_kv("Total Contracts", &total.to_string())
+        ));
     }
     if let Some(publishers) = stats["total_publishers"].as_i64() {
-        out.push_str(&format!("{}\n", format_kv("Total Publishers", &publishers.to_string())));
+        out.push_str(&format!(
+            "{}\n",
+            format_kv("Total Publishers", &publishers.to_string())
+        ));
     }
     if let Some(verified) = stats["verified_contracts"].as_i64() {
-        out.push_str(&format!("{}\n", format_kv("Verified Contracts", &verified.to_string())));
+        out.push_str(&format!(
+            "{}\n",
+            format_kv("Verified Contracts", &verified.to_string())
+        ));
     }
     if let Some(pct) = stats["verification_percentage"].as_f64() {
-        out.push_str(&format!("{}\n", format_kv("Verification Rate", &format!("{:.1}%", pct))));
+        out.push_str(&format!(
+            "{}\n",
+            format_kv("Verification Rate", &format!("{:.1}%", pct))
+        ));
     }
     out.push_str("\n");
-    
+
     // Growth
     out.push_str(&format!("{}", "Growth".bold()));
     out.push_str(&format!("\n{}\n", "─".repeat(40).bright_black()));
     if let Some(c7) = stats["contracts_last_7d"].as_i64() {
-        out.push_str(&format!("{}\n", format_kv("  Last 7 days", &c7.to_string())));
+        out.push_str(&format!(
+            "{}\n",
+            format_kv("  Last 7 days", &c7.to_string())
+        ));
     }
     if let Some(c30) = stats["contracts_last_30d"].as_i64() {
-        out.push_str(&format!("{}\n", format_kv("  Last 30 days", &c30.to_string())));
+        out.push_str(&format!(
+            "{}\n",
+            format_kv("  Last 30 days", &c30.to_string())
+        ));
     }
     if let Some(p30) = stats["new_publishers_last_30d"].as_i64() {
-        out.push_str(&format!("{}\n", format_kv("  New publishers (30d)", &p30.to_string())));
+        out.push_str(&format!(
+            "{}\n",
+            format_kv("  New publishers (30d)", &p30.to_string())
+        ));
     }
     out.push_str("\n");
-    
+
     // Top contracts
     if let Some(top) = stats["top_contracts"].as_array() {
         out.push_str(&format!("{}", "Top 10 Contracts by Interactions".bold()));
@@ -3862,15 +3989,16 @@ fn format_stats_table(stats: &serde_json::Value) -> String {
         for (i, contract) in top.iter().enumerate().take(10) {
             let name = contract["name"].as_str().unwrap_or("N/A");
             let count = contract["interaction_count"].as_i64().unwrap_or(0);
-            out.push_str(&format!("  {}. {} ({})\n", 
-                (i+1).to_string().bright_blue(),
+            out.push_str(&format!(
+                "  {}. {} ({})\n",
+                (i + 1).to_string().bright_blue(),
                 name.bold(),
                 count.to_string().green()
             ));
         }
         out.push_str("\n");
     }
-    
+
     // Network breakdown
     if let Some(networks) = stats["network_stats"].as_array() {
         out.push_str(&format!("{}", "By Network".bold()));
@@ -3887,16 +4015,15 @@ fn format_stats_table(stats: &serde_json::Value) -> String {
         }
         out.push_str("\n");
     }
-    
+
     // Generated at
     if let Some(gen) = stats["generated_at"].as_str() {
         out.push_str(&format!("Generated at: {}\n", gen.bright_black()));
     }
-    
+
     out
 }
 
 fn format_kv(key: &str, value: &str) -> String {
     format!("  {} {}", key.bold().cyan(), value.bright_white())
 }
-

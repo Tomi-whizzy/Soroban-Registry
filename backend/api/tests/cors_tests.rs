@@ -118,7 +118,10 @@ async fn test_cors_preflight_advertises_max_age_and_exposed_headers() {
         .unwrap();
 
     assert_eq!(
-        preflight.headers().get(header::ACCESS_CONTROL_MAX_AGE).unwrap(),
+        preflight
+            .headers()
+            .get(header::ACCESS_CONTROL_MAX_AGE)
+            .unwrap(),
         "3600"
     );
 

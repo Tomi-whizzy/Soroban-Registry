@@ -99,20 +99,12 @@ pub async fn trigger_security_scan(
             )
         })?;
 
-        let (source_code, _verification_id) = ml_detector::source_for_contract(
-            &state,
-            contract_id,
-            req.version.as_deref(),
-        )
-        .await?;
+        let (source_code, _verification_id) =
+            ml_detector::source_for_contract(&state, contract_id, req.version.as_deref()).await?;
 
-        let scan = ml_detector::persist_ml_scan(
-            &state,
-            contract_id,
-            contract_version_id,
-            source_code,
-        )
-        .await?;
+        let scan =
+            ml_detector::persist_ml_scan(&state, contract_id, contract_version_id, source_code)
+                .await?;
 
         return Ok(Json(scan));
     }

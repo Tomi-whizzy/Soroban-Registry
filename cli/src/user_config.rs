@@ -115,7 +115,10 @@ fn apply_set(config: &mut UserConfig, key: &str, value: &str) -> Result<()> {
         }
         "default-network" => {
             let normalized = value.trim().to_lowercase();
-            if !matches!(normalized.as_str(), "mainnet" | "testnet" | "futurenet" | "auto") {
+            if !matches!(
+                normalized.as_str(),
+                "mainnet" | "testnet" | "futurenet" | "auto"
+            ) {
                 anyhow::bail!("default-network must be one of: mainnet, testnet, futurenet, auto");
             }
             config.default_network = normalized;

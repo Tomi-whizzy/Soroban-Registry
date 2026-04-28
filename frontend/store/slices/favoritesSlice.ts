@@ -1,4 +1,4 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 interface FavoritesState {
   items: string[];
@@ -7,11 +7,12 @@ interface FavoritesState {
 const initialState: FavoritesState = { items: [] };
 
 const slice = createSlice({
-  name: 'favorites',
+  name: "favorites",
   initialState,
   reducers: {
     addFavorite(state, action: PayloadAction<string>) {
-      if (!state.items.includes(action.payload)) state.items.push(action.payload);
+      if (!state.items.includes(action.payload))
+        state.items.push(action.payload);
     },
     removeFavorite(state, action: PayloadAction<string>) {
       state.items = state.items.filter((i) => i !== action.payload);

@@ -34,7 +34,8 @@ pub async fn create_policy(
     let response = client
         .post(&url)
         .json(&payload)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to reach registry API")?;
 
     if !response.status().is_success() {
@@ -114,7 +115,8 @@ pub async fn create_proposal(
     let response = client
         .post(&url)
         .json(&payload)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to create deployment proposal")?;
 
     if !response.status().is_success() {
@@ -191,7 +193,8 @@ pub async fn sign_proposal(
     let response = client
         .post(&url)
         .json(&payload)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to sign proposal")?;
 
     let status = response.status();
@@ -242,7 +245,8 @@ pub async fn execute_proposal(api_url: &str, proposal_id: &str) -> Result<()> {
 
     let response = client
         .post(&url)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to execute proposal")?;
 
     let status = response.status();
@@ -284,7 +288,8 @@ pub async fn proposal_info(api_url: &str, proposal_id: &str) -> Result<()> {
 
     let response = client
         .get(&url)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to fetch proposal info")?;
 
     if !response.status().is_success() {
@@ -415,7 +420,8 @@ pub async fn list_proposals(
 
     let response = client
         .get(&url)
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .context("Failed to list proposals")?;
 
     if !response.status().is_success() {

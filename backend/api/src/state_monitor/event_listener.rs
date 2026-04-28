@@ -28,7 +28,7 @@ impl EventListener {
             std::env::var("STATE_POLL_INTERVAL")
                 .ok()
                 .and_then(|s| s.parse().ok())
-                .unwrap_or(5)
+                .unwrap_or(5),
         );
 
         Ok(Self {
@@ -41,28 +41,23 @@ impl EventListener {
     }
 
     /// Subscribe a contract for state change monitoring
-    pub async fn subscribe_contract(
-        &self,
-        contract_id: &str,
-        network: &str,
-    ) -> Result<()> {
+    pub async fn subscribe_contract(&self, contract_id: &str, network: &str) -> Result<()> {
         let mut contracts = self.monitored_contracts.write().await;
         contracts.insert(contract_id.to_string(), (network.to_string(), true));
-        
+
         info!("Contract {} subscribed for state monitoring", contract_id);
         Ok(())
     }
 
     /// Unsubscribe a contract
-    pub fn unsubscribe_contract(
-        &self,
-        contract_id: &str,
-        _network: &str,
-    ) -> Result<()> {
+    pub fn unsubscribe_contract(&self, contract_id: &str, _network: &str) -> Result<()> {
         let mut contracts = futures::executor::block_on(self.monitored_contracts.write());
         contracts.remove(contract_id);
-        
-        info!("Contract {} unsubscribed from state monitoring", contract_id);
+
+        info!(
+            "Contract {} unsubscribed from state monitoring",
+            contract_id
+        );
         Ok(())
     }
 
@@ -71,10 +66,10 @@ impl EventListener {
         info!("Starting event listener for contract state changes");
 
         let mut ticker = interval(self.poll_interval);
-        
+
         loop {
             ticker.tick().await;
-            
+
             // Process new state changes
             if let Err(e) = self.poll_state_changes().await {
                 error!("Error polling state changes: {}", e);
@@ -138,10 +133,7 @@ impl EventListener {
                 }
 
                 // Check for anomalies
-                if let Err(e) = self.anomaly_detector
-                    .analyze_state_change(&change)
-                    .await
-                {
+                if let Err(e) = self.anomaly_detector.analyze_state_change(&change).await {
                     error!("Anomaly detection error: {}", e);
                 }
             }

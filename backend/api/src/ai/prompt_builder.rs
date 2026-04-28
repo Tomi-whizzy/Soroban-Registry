@@ -1,4 +1,4 @@
-use crate::ai::service::{ContractContext, ChatMessage};
+use crate::ai::service::{ChatMessage, ContractContext};
 use serde_json::Value;
 
 /// Builds context-aware prompts for AI chat interactions
@@ -23,7 +23,9 @@ When responding:
 - For vulnerabilities, rate severity: critical/high/medium/low
 - For code suggestions, show complete corrected snippets
 - If uncertain, state your assumptions clearly
-"#.trim().to_string()
+"#
+        .trim()
+        .to_string()
     }
 
     /// Build prompt for contract analysis
@@ -121,10 +123,7 @@ Format as a markdown table with columns: Severity | Category | Location | Descri
     }
 
     /// Build prompt for code explanation
-    pub fn build_explanation_prompt(
-        contract_code: &str,
-        focus_area: Option<&str>,
-    ) -> String {
+    pub fn build_explanation_prompt(contract_code: &str, focus_area: Option<&str>) -> String {
         let focus_clause = match focus_area {
             Some(area) => format!("Focus on: {}", area),
             None => "Provide a general overview".to_string(),
@@ -171,7 +170,8 @@ Provide:
 2. Brief explanation of why this approach works
 3. Any caveats or alternatives
 "#,
-            contract_code, user_request,
+            contract_code,
+            user_request,
             context.map_or("".to_string(), |c| format!("Additional context: {}", c))
         )
     }
@@ -230,7 +230,7 @@ When discussing security or optimization, be specific and reference Soroban best
     pub fn parse_query_intent(query: &str) -> (bool, bool, bool, String) {
         let lower = query.to_lowercase();
 
-        let is_analysis = lower.contains("analyze") 
+        let is_analysis = lower.contains("analyze")
             || lower.contains("review")
             || lower.contains("overview")
             || lower.contains("summary");
@@ -264,15 +264,16 @@ mod tests {
 
     #[test]
     fn test_parse_query_intent() {
-        let (a, v, e, text) = PromptBuilder::parse_query_intent("What are the security vulnerabilities?");
+        let (a, v, e, text) =
+            PromptBuilder::parse_query_intent("What are the security vulnerabilities?");
         assert!(v, "Should detect vulnerability");
-        
+
         let (a, v, e, text) = PromptBuilder::parse_query_intent("Analyze this contract");
         assert!(a, "Should detect analysis intent");
-        
+
         let (a, v, e, text) = PromptBuilder::parse_query_intent("Explain the transfer function");
         assert!(e, "Should detect explanation intent");
-        
+
         let (a, v, e, text) = PromptBuilder::parse_query_intent("How do I add a multisig?");
         assert!(!a && !v && !e, "General question");
     }

@@ -92,7 +92,8 @@ impl PatchManager {
         let resp = client
             .post(format!("{}/api/patches", api_url))
             .json(&payload)
-            .send_with_retry().await?;
+            .send_with_retry()
+            .await?;
 
         if !resp.status().is_success() {
             bail!("failed to create patch: {}", resp.text().await?);
@@ -109,7 +110,8 @@ impl PatchManager {
 
         let patch_resp = client
             .get(format!("{}/api/patches/{}", api_url, patch_id))
-            .send_with_retry().await?;
+            .send_with_retry()
+            .await?;
 
         if !patch_resp.status().is_success() {
             bail!("patch not found: {}", patch_id);
@@ -122,7 +124,8 @@ impl PatchManager {
                 "{}/api/contracts?wasm_hash={}",
                 api_url, patch.target_version
             ))
-            .send_with_retry().await?;
+            .send_with_retry()
+            .await?;
 
         let data: serde_json::Value = contracts_resp.json().await?;
         let contracts = data["items"].as_array().cloned().unwrap_or_default();
@@ -135,7 +138,8 @@ impl PatchManager {
 
         let patch_resp = client
             .get(format!("{}/api/patches/{}", api_url, patch_id))
-            .send_with_retry().await?;
+            .send_with_retry()
+            .await?;
 
         if !patch_resp.status().is_success() {
             bail!("patch not found: {}", patch_id);
@@ -145,7 +149,8 @@ impl PatchManager {
 
         let audits_resp = client
             .get(format!("{}/api/patches/{}/audits", api_url, patch_id))
-            .send_with_retry().await?;
+            .send_with_retry()
+            .await?;
 
         let audits_data: serde_json::Value = audits_resp.json().await?;
         let applied = audits_data["total"].as_u64().unwrap_or(0) as usize;
@@ -155,7 +160,8 @@ impl PatchManager {
                 "{}/api/contracts?wasm_hash={}",
                 api_url, patch.target_version
             ))
-            .send_with_retry().await?;
+            .send_with_retry()
+            .await?;
 
         let contracts_data: serde_json::Value = contracts_resp.json().await?;
         let total = contracts_data["total"].as_u64().unwrap_or(0) as usize;
@@ -178,7 +184,8 @@ impl PatchManager {
         let resp = client
             .post(format!("{}/api/patches/{}/apply", api_url, patch_id))
             .json(&payload)
-            .send_with_retry().await?;
+            .send_with_retry()
+            .await?;
 
         if !resp.status().is_success() {
             bail!("failed to apply patch: {}", resp.text().await?);

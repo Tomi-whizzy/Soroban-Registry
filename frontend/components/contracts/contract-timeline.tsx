@@ -4,13 +4,13 @@ import React, { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { AnalyticsEvent } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
-import { 
-  GitCommit, 
-  ShieldCheck, 
-  FileCode, 
+import {
+  GitCommit,
+  ShieldCheck,
+  FileCode,
   Settings,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
 } from "lucide-react";
 
 interface ContractTimelineProps {
@@ -24,7 +24,10 @@ export function ContractTimeline({ contractId }: ContractTimelineProps) {
   useEffect(() => {
     async function loadHistory() {
       try {
-        const response = await api.getActivityFeed({ contract_id: contractId, limit: 50 });
+        const response = await api.getActivityFeed({
+          contract_id: contractId,
+          limit: 50,
+        });
         setEvents(response.items);
       } catch (error) {
         console.error("Failed to load timeline:", error);
@@ -35,23 +38,36 @@ export function ContractTimeline({ contractId }: ContractTimelineProps) {
     loadHistory();
   }, [contractId]);
 
-  if (loading) return <div className="animate-pulse space-y-4">
-    {[1, 2, 3].map(i => <div key={i} className="h-20 bg-muted rounded-lg" />)}
-  </div>;
+  if (loading)
+    return (
+      <div className="animate-pulse space-y-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-20 bg-muted rounded-lg" />
+        ))}
+      </div>
+    );
 
-  if (events.length === 0) return (
-    <div className="text-center py-12 border rounded-lg border-dashed">
-      <p className="text-muted-foreground text-sm">No interaction history found for this contract.</p>
-    </div>
-  );
+  if (events.length === 0)
+    return (
+      <div className="text-center py-12 border rounded-lg border-dashed">
+        <p className="text-muted-foreground text-sm">
+          No interaction history found for this contract.
+        </p>
+      </div>
+    );
 
   const getEventIcon = (type: string) => {
     switch (type) {
-      case 'contract_published': return <FileCode className="h-4 w-4 text-blue-500" />;
-      case 'contract_verified': return <ShieldCheck className="h-4 w-4 text-green-500" />;
-      case 'version_created': return <GitCommit className="h-4 w-4 text-purple-500" />;
-      case 'security_scan_completed': return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
-      default: return <Settings className="h-4 w-4 text-gray-500" />;
+      case "contract_published":
+        return <FileCode className="h-4 w-4 text-blue-500" />;
+      case "contract_verified":
+        return <ShieldCheck className="h-4 w-4 text-green-500" />;
+      case "version_created":
+        return <GitCommit className="h-4 w-4 text-purple-500" />;
+      case "security_scan_completed":
+        return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
+      default:
+        return <Settings className="h-4 w-4 text-gray-500" />;
     }
   };
 
@@ -65,14 +81,17 @@ export function ContractTimeline({ contractId }: ContractTimelineProps) {
           <div className="flex-1 ml-12 pt-1">
             <div className="flex items-center justify-between gap-2">
               <h4 className="text-sm font-semibold capitalize">
-                {event.event_type.replace(/_/g, ' ')}
+                {event.event_type.replace(/_/g, " ")}
               </h4>
               <time className="text-xs text-muted-foreground whitespace-nowrap">
-                {formatDistanceToNow(new Date(event.created_at), { addSuffix: true })}
+                {formatDistanceToNow(new Date(event.created_at), {
+                  addSuffix: true,
+                })}
               </time>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              {event.metadata?.message || `Contract ${event.event_type.split('_')[1] || 'event'} recorded.`}
+              {event.metadata?.message ||
+                `Contract ${event.event_type.split("_")[1] || "event"} recorded.`}
             </p>
           </div>
         </div>

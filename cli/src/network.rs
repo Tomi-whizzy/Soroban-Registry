@@ -142,7 +142,8 @@ async fn check_network(def: &NetworkDef, client: &reqwest::Client) -> NetworkInf
         .post(def.rpc_endpoint)
         .timeout(Duration::from_secs(REQUEST_TIMEOUT_SECS))
         .json(&rpc_req)
-        .send_with_retry().await;
+        .send_with_retry()
+        .await;
 
     let (sequence, close_time) = match rpc_result {
         Ok(resp) if resp.status().is_success() => {
@@ -189,7 +190,8 @@ async fn fetch_close_time(def: &NetworkDef, client: &reqwest::Client) -> Option<
     let resp = client
         .get(def.horizon_endpoint)
         .timeout(Duration::from_secs(REQUEST_TIMEOUT_SECS))
-        .send_with_retry().await
+        .send_with_retry()
+        .await
         .ok()?;
 
     if !resp.status().is_success() {
