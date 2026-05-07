@@ -14,7 +14,15 @@ if (process.env.NEXT_PUBLIC_USE_MOCKS === "true") {
   MOCK_EXAMPLES = mocks.MOCK_EXAMPLES;
   MOCK_VERSIONS = mocks.MOCK_VERSIONS;
 }
-import { CollaborativeComment, CollaborativeReviewDetails, VerificationLevel } from "@/types";
+import {
+  CollaborativeComment,
+  CollaborativeReviewDetails,
+  QueryNode,
+  VerificationLevel,
+  StatsResponse,
+  TimePeriod,
+} from "@/types";
+export type { QueryNode } from "@/types";
 import { trackEvent } from "./analytics";
 import { fetchStats } from "./api/stats";
 import {
@@ -52,6 +60,286 @@ export interface NetworkInfo {
 export interface NetworkListResponse {
   networks: NetworkInfo[];
   cached_at: string;
+}
+
+export interface GraphNode {
+  id: string;
+  contract_id: string;
+  name: string;
+  network: Network;
+  is_verified: boolean;
+  category?: string | null;
+  tags: string[];
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+  dependency_type: string;
+  call_frequency?: number | null;
+  call_volume?: number | null;
+  is_estimated?: boolean;
+  is_circular?: boolean;
+}
+
+export interface GraphResponse {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
+export type CompatibilityTestStatus = "compatible" | "warning" | "incompatible";
+
+export interface CompatibilityTestEntry {
+  sdk_version: string;
+  wasm_runtime: string;
+  network: string;
+  status: CompatibilityTestStatus;
+  tested_at: string;
+  test_duration_ms?: number | null;
+  error_message?: string | null;
+}
+
+export interface CompatibilityHistoryEntry {
+  id: string;
+  sdk_version: string;
+  wasm_runtime: string;
+  network: string;
+  previous_status?: CompatibilityTestStatus | null;
+  new_status: CompatibilityTestStatus;
+  changed_at: string;
+  change_reason?: string | null;
+}
+
+export interface CompatibilityTestSummary {
+  total_tests: number;
+  compatible_count: number;
+  warning_count: number;
+  incompatible_count: number;
+}
+
+export interface CompatibilityTestMatrixResponse {
+  contract_id: string;
+  sdk_versions: string[];
+  wasm_runtimes: string[];
+  networks: string[];
+  entries: CompatibilityTestEntry[];
+  summary: CompatibilityTestSummary;
+  last_tested?: string | null;
+}
+
+export interface RunCompatibilityTestRequest {
+  sdk_version: string;
+  wasm_runtime: string;
+  network: string;
+}
+
+export interface CompatibilityHistoryResponse {
+  contract_id: string;
+  changes: CompatibilityHistoryEntry[];
+  total: number;
+}
+
+export interface CompatibilityNotification {
+  id: string;
+  contract_id: string;
+  sdk_version: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface Comment {
+  id: string;
+  author: string;
+  body: string;
+  created_at: string;
+  flagged: boolean;
+  score: number;
+  flag_count: number;
+  parent_id?: string | null;
+  line_number?: number | null;
+  file_path?: string | null;
+  abi_path?: string | null;
+}
+
+export interface CommentListResponse {
+  items: Comment[];
+  total: number;
+}
+
+export interface FavoriteSearch {
+  id: string;
+  name: string;
+  query_json: QueryNode;
+  created_at: string;
+}
+
+export interface TemplateParameter {
+  name: string;
+  type?: string;
+  description?: string;
+  default?: string | number;
+}
+
+export interface Template {
+  id: string;
+  slug: string;
+  name: string;
+  version: string;
+  category: string;
+  description?: string;
+  install_count: number;
+  parameters: TemplateParameter[];
+  created_at?: string;
+}
+
+export interface ContractExample {
+  id: string;
+  contract_id: string;
+  title: string;
+  category: string;
+  description?: string;
+  code_js?: string;
+  code_rust?: string;
+  rating_up: number;
+  rating_down: number;
+  repo_avatar_url?: string;
+  repo_avatar_blurhash?: string;
+  repo_avatar_placeholder_color?: string;
+  thumbnail_url?: string;
+  thumbnail_blurhash?: string;
+  thumbnail_placeholder_color?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface FormalVerificationSession {
+  verifier_version: string;
+  created_at: string;
+}
+
+export interface FormalVerificationPropertyResult {
+  id: string;
+  status: "Proved" | "Violated" | "Unknown";
+  message?: string;
+  counterexample?: string | null;
+}
+
+export interface FormalVerificationPropertyDefinition {
+  property_id: string;
+  description?: string;
+  invariant?: string;
+}
+
+export interface FormalVerificationProperty {
+  property: FormalVerificationPropertyDefinition;
+  result: FormalVerificationPropertyResult;
+}
+
+export interface FormalVerificationFinding {
+  id: string;
+  title: string;
+  description: string;
+  severity: string;
+  category: string;
+  cwe_id?: string | null;
+  affected_functions: string[];
+  remediation: string;
+}
+
+export interface ProofCertificate {
+  properties_proved: number;
+  properties_violated: number;
+  properties_inconclusive: number;
+  overall_confidence: number;
+  summary: string;
+  generated_at: string;
+}
+
+export interface FormalVerificationReport {
+  session: FormalVerificationSession;
+  properties: FormalVerificationProperty[];
+  vulnerabilities: FormalVerificationFinding[];
+  certificate?: ProofCertificate | null;
+}
+
+export type InteroperabilityCapabilityKind = "bridge" | "adapter";
+
+export interface InteroperabilityProtocolMatch {
+  slug: string;
+  name: string;
+  description: string;
+  status: "compliant" | "partial" | "unsupported";
+  matched_functions: string[];
+  missing_functions: string[];
+  optional_matches: string[];
+  compliance_score: number;
+}
+
+export interface InteroperabilityCapability {
+  kind: InteroperabilityCapabilityKind;
+  label: string;
+  confidence: number;
+  evidence: string[];
+}
+
+export interface InteroperabilitySuggestion {
+  contract_id: string;
+  contract_address: string;
+  contract_name: string;
+  network: Network;
+  category?: string | null;
+  is_verified: boolean;
+  score: number;
+  reason: string;
+  shared_protocols: string[];
+  shared_functions: string[];
+  relation_types: string[];
+}
+
+export interface InteroperabilitySummary {
+  protocol_matches: number;
+  compatible_contracts: number;
+  suggested_contracts: number;
+  graph_nodes: number;
+  graph_edges: number;
+  bridge_signals: number;
+  adapter_signals: number;
+}
+
+export interface ContractInteroperabilityResponse {
+  contract_id: string;
+  contract_address: string;
+  contract_name: string;
+  network: Network;
+  analyzed_at: string;
+  has_abi: boolean;
+  analyzed_functions: string[];
+  warnings: string[];
+  protocols: InteroperabilityProtocolMatch[];
+  capabilities: InteroperabilityCapability[];
+  suggestions: InteroperabilitySuggestion[];
+  graph: GraphResponse;
+  summary: InteroperabilitySummary;
+}
+
+export interface CompatibilityEntry {
+  target_version: string;
+  is_compatible: boolean;
+  breaking_change_count: number;
+  breaking_changes: string[];
+}
+
+export interface CompatibilityMatrixRow {
+  source_version: string;
+  targets: CompatibilityEntry[];
+}
+
+export interface CompatibilityMatrix {
+  warnings: string[];
+  version_order: string[];
+  total_pairs: number;
+  rows: CompatibilityMatrixRow[];
 }
 
 /** Per-network config (Issue #43) */
@@ -484,6 +772,12 @@ export interface DeprecationInfo {
   dependents_notified: number;
 }
 
+export interface LegacyStatsResponse extends StatsResponse {
+  total_contracts: number;
+  verified_contracts: number;
+  total_publishers: number;
+}
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === "true";
 
@@ -620,7 +914,7 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   }
   if (!response.ok) {
     const data = await extractErrorData(response);
-    throw createApiError(response.status, data);
+    throw createApiError(response.status, data, path);
   }
   return response.json() as Promise<T>;
 }
@@ -708,10 +1002,18 @@ export async function fetchContracts(
 }
 
 export async function advancedSearchContracts(
-  params: ContractSearchParams = {},
+  params: {
+    query: QueryNode;
+    limit?: number;
+    offset?: number;
+    sort_by?: ContractSearchParams["sort_by"];
+    sort_order?: ContractSearchParams["sort_order"];
+  },
 ): Promise<PaginatedResponse<Contract>> {
-  // Advanced search is just a wrapper around the standard search
-  return fetchContracts(params);
+  return apiFetch<PaginatedResponse<Contract>>("/contracts/search", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
 }
 
 export async function fetchContract(id: string, network?: Network): Promise<ContractGetResponse> {
@@ -719,7 +1021,7 @@ export async function fetchContract(id: string, network?: Network): Promise<Cont
     const contract = MOCK_CONTRACTS.find(
       (c) => c.id === id || c.contract_id === id,
     ) as ContractGetResponse | undefined;
-    if (!contract) throw new ApiError(404, "Contract not found");
+    if (!contract) throw new ApiError("Contract not found", 404);
     return { ...contract, current_network: network };
   }
   const qs = network ? `?network=${network}` : "";
@@ -987,6 +1289,13 @@ export async function generateReleaseNotes(
   });
 }
 
+export async function listReleaseNotes(contractId: string): Promise<ReleaseNotesResponse[]> {
+  if (USE_MOCKS) {
+    return [];
+  }
+  return apiFetch<ReleaseNotesResponse[]>(`/contracts/${contractId}/release-notes`);
+}
+
 export async function fetchReleaseNotes(
   contractId: string,
   version: string,
@@ -1070,65 +1379,107 @@ export async function fetchTemplates(): Promise<Template[]> {
 
 // ─── Contract Graph ───────────────────────────────────────────────────────────
 
-export async function fetchContractGraph(network?: Network): Promise<unknown> {
+export async function fetchContractGraph(network?: Network | string): Promise<GraphResponse> {
   if (USE_MOCKS) {
     return { nodes: [], edges: [] };
   }
   const qs = network ? `?network=${network}` : "";
-  return apiFetch<unknown>(`/api/contracts/graph${qs}`);
+  return apiFetch<GraphResponse>(`/api/contracts/graph${qs}`);
 }
 
 export async function fetchContractLocalGraph(
   contractId: string,
   depth?: number,
-): Promise<unknown> {
+): Promise<GraphResponse> {
   if (USE_MOCKS) {
     return { nodes: [], edges: [] };
   }
   const search = new URLSearchParams();
   if (depth != null) search.set("depth", String(depth));
   const qs = search.toString() ? `?${search.toString()}` : "";
-  return apiFetch<unknown>(`/api/contracts/${contractId}/graph${qs}`);
+  return apiFetch<GraphResponse>(`/api/contracts/${contractId}/graph${qs}`);
 }
 
 // ─── Formal Verification ──────────────────────────────────────────────────────
 
-export async function fetchFormalVerificationResults(contractId: string): Promise<unknown> {
+export async function fetchFormalVerificationResults(
+  contractId: string,
+): Promise<FormalVerificationReport[]> {
   if (USE_MOCKS) {
-    return { status: "pending", results: [] };
+    return [];
   }
-  return apiFetch<unknown>(`/api/contracts/${contractId}/formal-verification`);
+  const listResponse = await apiFetch<{
+    items: Array<{ id: string }>;
+    total: number;
+  }>(`/api/contracts/${contractId}/formal-verification`);
+
+  if (!listResponse.items.length) {
+    return [];
+  }
+
+  const latestSession = listResponse.items[0];
+  const detail = await apiFetch<FormalVerificationReport>(
+    `/api/contracts/${contractId}/formal-verification/${latestSession.id}`,
+  );
+  return [detail];
 }
 
 // ─── Compatibility Testing ────────────────────────────────────────────────────
 
-export async function fetchCompatibilityMatrix(contractId: string): Promise<unknown> {
+export async function fetchCompatibilityMatrix(
+  contractId: string,
+): Promise<CompatibilityTestMatrixResponse> {
   if (USE_MOCKS) {
-    return { matrix: [] };
+    return {
+      contract_id: contractId,
+      sdk_versions: [],
+      wasm_runtimes: [],
+      networks: [],
+      entries: [],
+      summary: {
+        total_tests: 0,
+        compatible_count: 0,
+        warning_count: 0,
+        incompatible_count: 0,
+      },
+      last_tested: null,
+    };
   }
-  return apiFetch<unknown>(`/api/contracts/${contractId}/compatibility-matrix`);
+  return apiFetch<CompatibilityTestMatrixResponse>(`/api/contracts/${contractId}/compatibility-matrix`);
+}
+
+export async function runCompatibilityTest(
+  contractId: string,
+  request: RunCompatibilityTestRequest,
+): Promise<CompatibilityTestEntry> {
+  return apiFetch<CompatibilityTestEntry>(`/api/contracts/${contractId}/compatibility-matrix/test`, {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
 }
 
 export async function fetchCompatibilityHistory(
   contractId: string,
   limit?: number,
   offset?: number,
-): Promise<unknown> {
+): Promise<CompatibilityHistoryResponse> {
   if (USE_MOCKS) {
-    return { items: [] };
+    return { contract_id: contractId, changes: [], total: 0 };
   }
   const search = new URLSearchParams();
   if (limit != null) search.set("limit", String(limit));
   if (offset != null) search.set("offset", String(offset));
   const qs = search.toString() ? `?${search.toString()}` : "";
-  return apiFetch<unknown>(`/api/contracts/${contractId}/compatibility-matrix/history${qs}`);
+  return apiFetch<CompatibilityHistoryResponse>(`/api/contracts/${contractId}/compatibility-matrix/history${qs}`);
 }
 
-export async function fetchCompatibilityNotifications(contractId: string): Promise<unknown> {
+export async function fetchCompatibilityNotifications(
+  contractId: string,
+): Promise<CompatibilityNotification[]> {
   if (USE_MOCKS) {
-    return { notifications: [] };
+    return [];
   }
-  return apiFetch<unknown>(`/api/contracts/${contractId}/compatibility-matrix/notifications`);
+  return apiFetch<CompatibilityNotification[]>(`/api/contracts/${contractId}/compatibility-matrix/notifications`);
 }
 
 export function getCompatibilityExportUrl(
@@ -1141,11 +1492,57 @@ export function getCompatibilityExportUrl(
 
 // ─── Comments ─────────────────────────────────────────────────────────────────
 
-export async function fetchComments(contractId: string): Promise<CollaborativeComment[]> {
+export async function fetchComments(contractId: string): Promise<CommentListResponse> {
+  if (USE_MOCKS) {
+    return { items: [], total: 0 };
+  }
+  return apiFetch<CommentListResponse>(`/api/contracts/${contractId}/comments`);
+}
+
+export async function postComment(
+  contractId: string,
+  body: string,
+  parentId?: string,
+): Promise<Comment> {
+  return apiFetch<Comment>(`/api/contracts/${contractId}/comments`, {
+    method: "POST",
+    body: JSON.stringify({ body, parent_id: parentId }),
+  });
+}
+
+export async function voteComment(
+  commentId: string,
+  contractId: string,
+  direction: "up" | "down",
+): Promise<Comment> {
+  return apiFetch<Comment>(`/api/contracts/${contractId}/comments/${commentId}/vote`, {
+    method: "POST",
+    body: JSON.stringify({ direction }),
+  });
+}
+
+export async function flagComment(
+  commentId: string,
+  contractId: string,
+  reason: string,
+): Promise<Comment> {
+  return apiFetch<Comment>(`/api/contracts/${contractId}/comments/${commentId}/flag`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export async function listFavoriteSearches(): Promise<FavoriteSearch[]> {
   if (USE_MOCKS) {
     return [];
   }
-  return apiFetch<CollaborativeComment[]>(`/api/contracts/${contractId}/comments`);
+  return apiFetch<FavoriteSearch[]>("/api/favorites/search");
+}
+
+export async function deleteFavoriteSearch(id: string): Promise<void> {
+  await apiFetch<void>(`/api/favorites/search/${id}`, {
+    method: "DELETE",
+  });
 }
 
 // ─── Preferences ──────────────────────────────────────────────────────────────
@@ -1165,22 +1562,33 @@ export async function fetchPreferences(token: string): Promise<UserPreferences> 
   });
 }
 
+export async function updatePreferences(
+  token: string,
+  favorites: string[],
+): Promise<UserPreferences> {
+  if (USE_MOCKS) {
+    return { favorites };
+  }
+  return apiFetch<UserPreferences>("/api/me/preferences", {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ favorites }),
+  });
+}
+
 // ─── Contract Search Suggestions ───────────────────────────────────────────────
 
 export async function fetchContractSearchSuggestions(
   query: string,
   limit?: number,
-): Promise<SearchSuggestion[]> {
+): Promise<SearchSuggestionsResponse> {
   if (USE_MOCKS || !query.trim()) {
-    return [];
+    return { items: [] };
   }
   const search = new URLSearchParams();
   search.set("query", query);
   if (limit != null) search.set("limit", String(limit));
-  const response = await apiFetch<SearchSuggestionsResponse>(
-    `/search/suggestions?${search.toString()}`,
-  );
-  return response.items || [];
+  return apiFetch<SearchSuggestionsResponse>(`/search/suggestions?${search.toString()}`);
 }
 
 // ─── Custom Metrics ───────────────────────────────────────────────────────────
@@ -1268,11 +1676,22 @@ export async function updateReviewerStatus(
 
 // ─── Examples ─────────────────────────────────────────────────────────────────
 
-export async function fetchContractExamples(contractId: string): Promise<unknown[]> {
+export async function fetchContractExamples(contractId: string): Promise<ContractExample[]> {
   if (USE_MOCKS) {
     return MOCK_EXAMPLES[contractId] || [];
   }
-  return apiFetch<unknown[]>(`/contracts/${contractId}/examples`);
+  return apiFetch<ContractExample[]>(`/contracts/${contractId}/examples`);
+}
+
+export async function rateExample(
+  exampleId: string,
+  userId: string,
+  rating: number,
+): Promise<void> {
+  await apiFetch<void>(`/api/examples/${exampleId}/rating`, {
+    method: "POST",
+    body: JSON.stringify({ user_id: userId, rating }),
+  });
 }
 
 // ─── Re-exports ───────────────────────────────────────────────────────────────
@@ -1287,6 +1706,37 @@ export async function fetchMaintenanceWindow(): Promise<MaintenanceWindow | null
   } catch {
     return null;
   }
+}
+
+export async function getStats(
+  period: TimePeriod = "all-time",
+): Promise<LegacyStatsResponse> {
+  const response = await fetch(`${API_URL}/api/stats?period=${encodeURIComponent(period)}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch stats: ${response.status}`);
+  }
+
+  const rawStats = (await response.json()) as {
+    total_contracts: number;
+    verified_contracts: number;
+    total_publishers: number;
+  };
+
+  return {
+    total_contracts: rawStats.total_contracts,
+    verified_contracts: rawStats.verified_contracts,
+    total_publishers: rawStats.total_publishers,
+    totalContracts: rawStats.total_contracts,
+    verifiedPercentage:
+      rawStats.total_contracts > 0
+        ? (rawStats.verified_contracts / rawStats.total_contracts) * 100
+        : 0,
+    totalPublishers: rawStats.total_publishers,
+    networkBreakdown: [],
+    contractsByCategory: [],
+    deploymentsTrend: [],
+    topPublishers: [],
+  };
 }
 
 // Re-export trackEvent for convenience
@@ -1309,7 +1759,8 @@ export const api = {
   getContractVersions: fetchContractVersions,
   fetchContractAbi,
   fetchAnalytics,
-  getStats: fetchStats,
+  getStats,
+  fetchStats,
   getContractAbi: fetchContractAbi,
   fetchContractChangelog,
   getContractChangelog: fetchContractChangelog,
@@ -1319,18 +1770,28 @@ export const api = {
   getContractInteractions: fetchContractInteractions,
   publishContract,
   fetchPublisher,
+  getPublisher: fetchPublisher,
   fetchPublishers,
+  getPublishers: fetchPublishers,
   fetchPublisherContracts,
+  getPublisherContracts: fetchPublisherContracts,
   fetchNetworks,
+  getNetworks: fetchNetworks,
   fetchSearchSuggestions,
+  getSearchSuggestions: fetchSearchSuggestions,
   semanticSearch,
   fetchActivityFeed,
+  getActivityFeed: fetchActivityFeed,
   fetchDependencyTree,
   getContractDependencies: fetchDependencyTree,
   fetchMetricCatalog,
+  getMetricCatalog: fetchMetricCatalog,
   fetchMetricSeries,
+  getMetricSeries: fetchMetricSeries,
   generateReleaseNotes,
+  listReleaseNotes,
   fetchReleaseNotes,
+  getReleaseNotes: fetchReleaseNotes,
   updateReleaseNotes,
   publishReleaseNotes,
   fetchDeprecationInfo,
@@ -1344,10 +1805,10 @@ export const api = {
   updateReviewerStatus,
   fetchContractExamples,
   getContractExamples: fetchContractExamples,
+  rateExample,
   fetchMaintenanceWindow,
+  getMaintenanceWindow: fetchMaintenanceWindow,
   // Backward-compatible aliases for stats and templates
-  fetchStats,
-  getStats: () => fetchStats("all-time"),
   fetchTemplates,
   getTemplates: fetchTemplates,
   // Backward-compatible aliases for graph methods
@@ -1361,6 +1822,7 @@ export const api = {
   // Backward-compatible aliases for compatibility testing
   fetchCompatibilityMatrix,
   getCompatibilityMatrix: fetchCompatibilityMatrix,
+  runCompatibilityTest,
   fetchCompatibilityHistory,
   getCompatibilityHistory: fetchCompatibilityHistory,
   fetchCompatibilityNotifications,
@@ -1369,9 +1831,15 @@ export const api = {
   // Backward-compatible aliases for comments
   fetchComments,
   getComments: fetchComments,
+  postComment,
+  voteComment,
+  flagComment,
+  listFavoriteSearches,
+  deleteFavoriteSearch,
   // Backward-compatible aliases for preferences
   fetchPreferences,
   getPreferences: fetchPreferences,
+  updatePreferences,
   // Backward-compatible aliases for search suggestions
   fetchContractSearchSuggestions,
   getContractSearchSuggestions: fetchContractSearchSuggestions,

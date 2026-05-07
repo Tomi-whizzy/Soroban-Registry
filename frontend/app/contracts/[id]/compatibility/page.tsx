@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { api } from "@/lib/api";
+import { api, type CompatibilityMatrix } from "@/lib/api";
 import { CompatibilityMatrixDisplay } from "@/components/CompatibilityMatrix";
 import { ArrowLeft, GitCompare, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
@@ -26,7 +26,18 @@ export default function CompatibilityPage() {
     error,
   } = useQuery({
     queryKey: ["compatibility", contractId],
-    queryFn: () => api.fetchContractVersions(contractId!),
+    queryFn: async (): Promise<CompatibilityMatrix> => {
+      const versions = await api.fetchContractVersions(contractId!);
+      return {
+        warnings: [],
+        version_order: versions.map((version) => version.version),
+        total_pairs: 0,
+        rows: versions.map((version) => ({
+          source_version: version.version,
+          targets: [],
+        })),
+      };
+    },
     enabled: !!contractId,
   });
 
