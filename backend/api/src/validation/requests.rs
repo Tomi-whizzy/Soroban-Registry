@@ -834,6 +834,7 @@ mod tests {
             publisher_address: valid_stellar_address(),
             dependencies: vec![],
             is_cicd: false,
+            ..Default::default()
         };
 
         assert!(req.validate().is_ok());
@@ -853,6 +854,7 @@ mod tests {
             publisher_address: valid_stellar_address(),
             dependencies: vec![],
             is_cicd: false,
+            ..Default::default()
         };
 
         let result = req.validate();
@@ -875,6 +877,7 @@ mod tests {
             publisher_address: valid_stellar_address(),
             dependencies: vec![],
             is_cicd: false,
+            ..Default::default()
         };
 
         let result = req.validate();
@@ -893,6 +896,7 @@ mod tests {
             network: Network::Testnet,
             category: Some("  DeFi  ".to_string()),
             tags: vec!["  token  ".to_string(), "<b>defi</b>".to_string()],
+            ..Default::default()
             source_url: Some("  https://github.com/user/repo  ".to_string()),
             publisher_address: "  gdlzfc3syjydzt7k67vz75hpjvieuvnixf47zg2fb2rmqqvu2hhgcysc  "
                 .to_string(),

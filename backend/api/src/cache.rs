@@ -488,6 +488,7 @@ mod tests {
             max_capacity: 100,
             redis_enabled: false,
             redis_url: None,
+            ..Default::default()
         })
         .await;
 

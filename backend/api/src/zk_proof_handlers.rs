@@ -801,6 +801,7 @@ fn parse_proof_system(s: &str) -> shared::ZkProofSystem {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use base64::Engine;
 
     #[test]
     fn anonymise_address_masks_middle() {

@@ -179,6 +179,7 @@ mod tests {
             contract_events: Arc::new(ContractEventHub::from_env()),
             source_storage: Arc::new(shared::source_storage::SourceStorage::new().await.unwrap()),
             event_broadcaster,
+            ..Default::default()
         }
     }
 

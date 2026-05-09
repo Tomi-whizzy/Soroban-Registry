@@ -264,17 +264,17 @@ mod tests {
 
     #[test]
     fn test_parse_query_intent() {
-        let (a, v, e, text) =
+        let (_, v, _, _) =
             PromptBuilder::parse_query_intent("What are the security vulnerabilities?");
         assert!(v, "Should detect vulnerability");
 
-        let (a, v, e, text) = PromptBuilder::parse_query_intent("Analyze this contract");
+        let (a, _, _, _) = PromptBuilder::parse_query_intent("Analyze this contract");
         assert!(a, "Should detect analysis intent");
 
-        let (a, v, e, text) = PromptBuilder::parse_query_intent("Explain the transfer function");
+        let (_, _, e, _) = PromptBuilder::parse_query_intent("Explain the transfer function");
         assert!(e, "Should detect explanation intent");
 
-        let (a, v, e, text) = PromptBuilder::parse_query_intent("How do I add a multisig?");
+        let (a, v, e, _) = PromptBuilder::parse_query_intent("How do I add a multisig?");
         assert!(!a && !v && !e, "General question");
     }
 }

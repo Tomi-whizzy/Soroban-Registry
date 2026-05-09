@@ -593,6 +593,7 @@ mod tests {
             relevance_score: None,
             visibility: shared::VisibilityType::Public,
             current_version: None,
+            ..Default::default()
         };
 
         assert_eq!(

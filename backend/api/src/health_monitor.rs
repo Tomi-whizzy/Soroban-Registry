@@ -384,6 +384,7 @@ mod tests {
             organization_id: None,
             visibility: shared::VisibilityType::Public,
             current_version: None,
+            ..Default::default()
         }
     }
 
