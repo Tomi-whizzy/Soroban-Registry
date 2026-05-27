@@ -47,6 +47,9 @@ mod version;
 mod webhook;
 mod wizard;
 
+// Added the search module
+mod search;
+
 use anyhow::Result;
 use clap::{ArgAction, Parser, Subcommand};
 use colored::Colorize;
@@ -1841,41 +1844,7 @@ pub async fn dispatch_command(
                     .await?;
             print!("{}", result.stdout);
         }
-        Commands::Search {
-            query,
-            verified_only,
-            network: filter_networks,
-            category,
-            sort,
-            limit,
-            offset,
-            json,
-        } => {
-            let networks_vec: Vec<String> = filter_networks
-                .map(|n| n.split(',').map(|s| s.trim().to_string()).collect())
-                .unwrap_or_default();
-            log::debug!(
-                "Command: search | query={:?} verified_only={} networks={:?} category={:?} sort={:?}",
-                query,
-                verified_only,
-                networks_vec,
-                category,
-                sort
-            );
-            commands::search(
-                &cli.api_url,
-                &query,
-                network,
-                verified_only,
-                networks_vec,
-                category.as_deref(),
-                sort.as_deref(),
-                limit,
-                offset,
-                json,
-            )
-            .await?;
-        }
+        
         Commands::Info { id } => {
             commands::contract_info(&cli.api_url, &id).await?;
         }
@@ -1912,6 +1881,29 @@ pub async fn dispatch_command(
             )
             .await?;
         }
+       Commands::Search {
+    query,
+    verified_only,
+    network,
+    category,
+    sort,
+    limit,
+    offset,
+    json,
+} => {
+    search::run(
+        &query,
+        verified_only,
+        network.as_ref(),
+        category.as_ref(),
+        sort.as_ref(),
+        limit,
+        offset,
+        json,
+        &cli.api_url,
+    )
+    .await?;
+}
         Commands::Stats {
             timeframe,
             format,
