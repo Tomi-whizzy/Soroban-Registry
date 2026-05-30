@@ -3,6 +3,7 @@ pub mod reviews;
 pub mod validators;
 
 use crate::validation::extractors::ValidatedJson;
+use crate::validation::handler_requests::BatchContractIdsRequest;
 use axum::{
     extract::{
         rejection::{JsonRejection, QueryRejection},
@@ -2559,7 +2560,7 @@ pub async fn get_contract(
 pub async fn get_contracts_batch(
     State(state): State<AppState>,
     Query(query): Query<BatchContractsQuery>,
-    Json(contract_ids): Json<Vec<String>>,
+    ValidatedJson(contract_ids): ValidatedJson<BatchContractIdsRequest>,
 ) -> ApiResult<Json<Vec<Option<Value>>>> {
     if contract_ids.len() > 100 {
         return Err(ApiError::bad_request(
@@ -2831,7 +2832,7 @@ pub async fn revert_contract_version(
     State(state): State<AppState>,
     Path((id, target_version)): Path<(String, String)>,
     headers: HeaderMap,
-    Json(req): Json<shared::RevertVersionRequest>,
+    ValidatedJson(req): ValidatedJson<shared::RevertVersionRequest>,
 ) -> ApiResult<Json<ContractVersion>> {
     let (contract_uuid, contract_id) = fetch_contract_identity(&state, &id).await?;
 
@@ -3006,7 +3007,7 @@ pub struct ContractSourceDiffResponse {
 pub async fn upload_contract_source(
     State(state): State<AppState>,
     Path((id, version)): Path<(String, String)>,
-    Json(req): Json<UploadContractSourceRequest>,
+    ValidatedJson(req): ValidatedJson<UploadContractSourceRequest>,
 ) -> ApiResult<Json<ContractSourceResponse>> {
     let (contract_uuid, contract_id) = fetch_contract_identity(&state, &id).await?;
 
@@ -6971,7 +6972,7 @@ pub async fn list_favorite_searches(
 )]
 pub async fn save_favorite_search(
     State(state): State<AppState>,
-    Json(req): Json<SaveFavoriteSearchRequest>,
+    ValidatedJson(req): ValidatedJson<SaveFavoriteSearchRequest>,
 ) -> ApiResult<Json<FavoriteSearch>> {
     let favorite: FavoriteSearch = sqlx::query_as(
         "INSERT INTO favorite_searches (name, query_json) VALUES ($1, $2) RETURNING *",
