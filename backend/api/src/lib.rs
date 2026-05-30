@@ -105,3 +105,7 @@ pub mod state_monitor;
 pub mod stats;
 pub mod webhook_delivery;
 pub mod db_resilience;
+pub mod archival;
+pub mod elasticsearch_handlers;
+pub mod partition_manager;
+pub mod query_monitor;

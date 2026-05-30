@@ -2,7 +2,7 @@
 use crate::openapi;
 use crate::{
     ab_test_handlers, abi_versioning_handlers, ai::handlers as ai_handlers, analytics_handlers,
-    auth, auth_handlers, batch_verify_handlers, breaking_changes, bulk_operations_handlers,
+    archival, auth, auth_handlers, batch_verify_handlers, breaking_changes, bulk_operations_handlers,
     canary_handlers, category_handlers, client_observability_handlers, clone_federation_handlers,
     collaborative_reviews, compatibility_testing_handlers, contract_events,
     contract_stats_handlers, contributor_handlers, custom_metrics_handlers, dependency_handlers,
@@ -11,8 +11,9 @@ use crate::{
     marketplace::{license_handlers as mp_license, metering as mp_metering,
                   pricing_handlers as mp_pricing, stripe_handlers as mp_stripe,
                   usdc_handlers as mp_usdc},
-    metrics_handler, migration_handlers, mutation_testing_handlers, org_handlers, patch_handlers,
-    performance_handlers, plugin_marketplace_handlers, publisher_verification_handlers,
+    elasticsearch_handlers, metrics_handler, migration_handlers, mutation_testing_handlers,
+    org_handlers, partition_manager, patch_handlers, performance_handlers,
+    plugin_marketplace_handlers, publisher_verification_handlers, query_monitor,
     recommendation_handlers, resource_handlers, search_postgres, security_scan_handlers,
     similarity_handlers, simulation_handlers, state::AppState,
     state_monitor::handlers as state_monitor_handlers, stats, subscription_handlers,
@@ -78,6 +79,10 @@ pub fn application_routes(_schema: crate::graphql::schema::RegistrySchema) -> Ro
         .merge(validator_routes())
         .merge(openapi_routes())
         .nest("/api", crate::activity_feed_routes::routes())
+        .merge(query_monitor_routes())
+        .merge(partition_routes())
+        .merge(archival_routes())
+        .merge(elasticsearch_search_routes())
 }
 
 fn multisig_routes_group() -> Router<AppState> {
@@ -1212,5 +1217,114 @@ pub fn collaborative_review_routes() -> Router<AppState> {
         .route(
             "/api/reviews/collaborative/:id/status",
             patch(collaborative_reviews::update_reviewer_status),
+        )
+}
+
+// ── Issue #878: Database query monitoring ────────────────────────────────────
+
+pub fn query_monitor_routes() -> Router<AppState> {
+    Router::new()
+        .route(
+            "/api/admin/db/slow-queries",
+            get(query_monitor::get_slow_queries),
+        )
+        .route(
+            "/api/admin/db/index-stats",
+            get(query_monitor::get_index_stats),
+        )
+        .route(
+            "/api/admin/db/lock-monitor",
+            get(query_monitor::get_lock_monitor),
+        )
+        .route(
+            "/api/admin/db/performance-trends",
+            get(query_monitor::get_performance_trends),
+        )
+        .route(
+            "/api/admin/db/performance-report",
+            get(query_monitor::get_performance_report),
+        )
+        .route(
+            "/api/admin/db/performance-report/export",
+            post(query_monitor::export_performance_report),
+        )
+}
+
+// ── Issue #879: Data partitioning ────────────────────────────────────────────
+
+pub fn partition_routes() -> Router<AppState> {
+    Router::new()
+        .route(
+            "/api/admin/partitions",
+            get(partition_manager::list_partitions),
+        )
+        .route(
+            "/api/admin/partitions/status",
+            get(partition_manager::get_partition_status),
+        )
+        .route(
+            "/api/admin/partitions/create",
+            post(partition_manager::create_partition),
+        )
+        .route(
+            "/api/admin/partitions/:name",
+            delete(partition_manager::archive_partition),
+        )
+}
+
+// ── Issue #881: Data archival ────────────────────────────────────────────────
+
+pub fn archival_routes() -> Router<AppState> {
+    Router::new()
+        .route(
+            "/api/admin/archival/status",
+            get(archival::get_archival_status),
+        )
+        .route(
+            "/api/admin/archival/policies",
+            get(archival::get_archival_policies),
+        )
+        .route(
+            "/api/admin/archival/policies/:data_type",
+            patch(archival::update_archival_policy),
+        )
+        .route(
+            "/api/admin/archival/run",
+            post(archival::trigger_archival),
+        )
+        .route(
+            "/api/admin/archival/audit-trail",
+            get(archival::get_archival_audit_trail),
+        )
+        .route(
+            "/api/admin/archival/restore",
+            post(archival::restore_archived_record),
+        )
+}
+
+// ── Issue #880: Elasticsearch / full-text search ─────────────────────────────
+
+pub fn elasticsearch_search_routes() -> Router<AppState> {
+    Router::new()
+        .route(
+            "/api/search/elasticsearch",
+            get(elasticsearch_handlers::elasticsearch_search),
+        )
+        .route(
+            "/api/search/analytics",
+            get(elasticsearch_handlers::get_search_analytics),
+        )
+        .route(
+            "/api/search/trending",
+            get(elasticsearch_handlers::get_trending_searches),
+        )
+        .route(
+            "/api/admin/search/reindex",
+            post(elasticsearch_handlers::reindex_contracts),
+        )
+        .route(
+            "/api/admin/search/synonyms",
+            get(elasticsearch_handlers::get_synonyms)
+                .put(elasticsearch_handlers::upsert_synonym),
         )
 }
