@@ -1,23 +1,26 @@
 #[cfg(feature = "openapi")]
 use crate::openapi;
 use crate::{
-    ab_test_handlers, abi_versioning_handlers, ai::handlers as ai_handlers, analytics_handlers,
-    archival, auth, auth_handlers, batch_verify_handlers, breaking_changes, bulk_operations_handlers,
-    canary_handlers, category_handlers, client_observability_handlers, clone_federation_handlers,
-    collaborative_reviews, compatibility_testing_handlers, contract_events,
-    contract_stats_handlers, contributor_handlers, custom_metrics_handlers, dependency_handlers,
-    deprecation_handlers, error_logging, formal_verification_handlers, gas_estimation_handlers,
-    governance_handlers, graph_analysis_handlers, handlers, interoperability_handlers,
-    marketplace::{license_handlers as mp_license, metering as mp_metering,
-                  pricing_handlers as mp_pricing, stripe_handlers as mp_stripe,
-                  usdc_handlers as mp_usdc},
-    elasticsearch_handlers, metrics_handler, migration_handlers, mutation_testing_handlers,
-    org_handlers, partition_manager, patch_handlers, performance_handlers,
-    plugin_marketplace_handlers, publisher_verification_handlers, query_monitor,
-    recommendation_handlers, resource_handlers, search_postgres, security_scan_handlers,
-    similarity_handlers, simulation_handlers, state::AppState,
-    state_monitor::handlers as state_monitor_handlers, stats, subscription_handlers,
-    verification_handlers, websocket, zk_proof_handlers,
+    ab_test_handlers, abi_versioning_handlers,
+    ai::handlers as ai_handlers,
+    analytics_handlers, archival, auth, auth_handlers, batch_verify_handlers, breaking_changes,
+    bulk_operations_handlers, canary_handlers, category_handlers, client_observability_handlers,
+    clone_federation_handlers, collaborative_reviews, compatibility_testing_handlers,
+    contract_events, contract_stats_handlers, contributor_handlers, custom_metrics_handlers,
+    dependency_handlers, deprecation_handlers, elasticsearch_handlers, error_logging,
+    formal_verification_handlers, gas_estimation_handlers, governance_handlers,
+    graph_analysis_handlers, handlers, interoperability_handlers,
+    marketplace::{
+        license_handlers as mp_license, metering as mp_metering, pricing_handlers as mp_pricing,
+        stripe_handlers as mp_stripe, usdc_handlers as mp_usdc,
+    },
+    metrics_handler, migration_handlers, mutation_testing_handlers, org_handlers,
+    partition_manager, patch_handlers, performance_handlers, plugin_marketplace_handlers,
+    publisher_verification_handlers, query_monitor, recommendation_handlers, resource_handlers,
+    search_postgres, security_scan_handlers, similarity_handlers, simulation_handlers,
+    state::AppState,
+    state_monitor::handlers as state_monitor_handlers,
+    stats, subscription_handlers, verification_handlers, websocket, zk_proof_handlers,
 };
 
 use axum::{
@@ -187,10 +190,7 @@ pub fn marketplace_routes() -> Router<AppState> {
             "/api/contracts/:contract_id/checkout",
             post(mp_stripe::create_checkout),
         )
-        .route(
-            "/api/marketplace/stripe/webhook",
-            post(mp_stripe::webhook),
-        )
+        .route("/api/marketplace/stripe/webhook", post(mp_stripe::webhook))
         // Phase 3 — USDC on Stellar: payment intents + confirm
         .route(
             "/api/contracts/:contract_id/usdc-intents",
@@ -1288,10 +1288,7 @@ pub fn archival_routes() -> Router<AppState> {
             "/api/admin/archival/policies/:data_type",
             patch(archival::update_archival_policy),
         )
-        .route(
-            "/api/admin/archival/run",
-            post(archival::trigger_archival),
-        )
+        .route("/api/admin/archival/run", post(archival::trigger_archival))
         .route(
             "/api/admin/archival/audit-trail",
             get(archival::get_archival_audit_trail),
@@ -1324,7 +1321,6 @@ pub fn elasticsearch_search_routes() -> Router<AppState> {
         )
         .route(
             "/api/admin/search/synonyms",
-            get(elasticsearch_handlers::get_synonyms)
-                .put(elasticsearch_handlers::upsert_synonym),
+            get(elasticsearch_handlers::get_synonyms).put(elasticsearch_handlers::upsert_synonym),
         )
 }
