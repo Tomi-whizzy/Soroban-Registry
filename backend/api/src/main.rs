@@ -106,6 +106,9 @@ async fn main() -> Result<()> {
     // Spawn the hourly analytics aggregation background task
     aggregation::spawn_aggregation_task(pool.clone());
 
+    // Spawn the periodic data integrity verification task (Issue #886)
+    api::integrity::spawn_integrity_verification_task(pool.clone());
+
     // Create prometheus registry for metrics
     let registry = Registry::new();
     if let Err(e) = api::metrics::register_all(&registry) {
@@ -171,19 +174,19 @@ async fn main() -> Result<()> {
         "Initializing database resilience layer"
     );
 
-    let db_breaker = Arc::new(crate::db_resilience::CircuitBreaker::new(
+    let db_breaker = Arc::new(api::db_resilience::CircuitBreaker::new(
         breaker_failures,
         Duration::from_secs(breaker_recovery_secs),
     ));
 
-    let db_queue = Arc::new(crate::db_resilience::DbQueue::new(
+    let db_queue = Arc::new(api::db_resilience::DbQueue::new(
         concurrency_limit,
         queue_limit,
         Duration::from_millis(queue_timeout_ms),
     ));
 
     // Spawn background database health ping task
-    crate::db_resilience::spawn_background_ping_task(
+    api::db_resilience::spawn_background_ping_task(
         pool.clone(),
         db_breaker.clone(),
         Duration::from_secs(2), // Ping every 2 seconds
@@ -328,7 +331,7 @@ async fn main() -> Result<()> {
         ))
         .layer(middleware::from_fn_with_state(
             state.clone(),
-            crate::db_resilience::db_resilience_middleware,
+            api::db_resilience::db_resilience_middleware,
         ))
         .layer(middleware::from_fn_with_state(
             state.clone(),

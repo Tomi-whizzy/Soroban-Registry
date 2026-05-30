@@ -109,3 +109,4 @@ pub mod archival;
 pub mod elasticsearch_handlers;
 pub mod partition_manager;
 pub mod query_monitor;
+pub mod integrity;

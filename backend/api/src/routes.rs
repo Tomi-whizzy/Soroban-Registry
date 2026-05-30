@@ -11,7 +11,7 @@ use crate::{
     marketplace::{license_handlers as mp_license, metering as mp_metering,
                   pricing_handlers as mp_pricing, stripe_handlers as mp_stripe,
                   usdc_handlers as mp_usdc},
-    elasticsearch_handlers, metrics_handler, migration_handlers, mutation_testing_handlers,
+    elasticsearch_handlers, integrity, metrics_handler, migration_handlers, mutation_testing_handlers,
     org_handlers, partition_manager, patch_handlers, performance_handlers,
     plugin_marketplace_handlers, publisher_verification_handlers, query_monitor,
     recommendation_handlers, resource_handlers, search_postgres, security_scan_handlers,
@@ -83,6 +83,7 @@ pub fn application_routes(_schema: crate::graphql::schema::RegistrySchema) -> Ro
         .merge(partition_routes())
         .merge(archival_routes())
         .merge(elasticsearch_search_routes())
+        .merge(integrity_routes())
 }
 
 fn multisig_routes_group() -> Router<AppState> {
@@ -1299,6 +1300,50 @@ pub fn archival_routes() -> Router<AppState> {
         .route(
             "/api/admin/archival/restore",
             post(archival::restore_archived_record),
+        )
+}
+
+// ── Issue #886: Data integrity verification and checksums ────────────────────
+
+pub fn integrity_routes() -> Router<AppState> {
+    Router::new()
+        // Per-contract checksum + verification endpoints.
+        .route(
+            "/api/contracts/:id/integrity/checksums",
+            post(integrity::compute_checksums_handler),
+        )
+        .route(
+            "/api/contracts/:id/integrity",
+            get(integrity::get_checksums_handler),
+        )
+        .route(
+            "/api/contracts/:id/integrity/verify",
+            post(integrity::verify_contract_handler),
+        )
+        .route(
+            "/api/contracts/:id/integrity/access-check",
+            get(integrity::access_check_handler),
+        )
+        .route(
+            "/api/contracts/:id/integrity/repair",
+            post(integrity::repair_contract_handler),
+        )
+        // Admin / system-wide integrity endpoints.
+        .route(
+            "/api/admin/integrity/verify",
+            post(integrity::trigger_full_verification_handler),
+        )
+        .route(
+            "/api/admin/integrity/status",
+            get(integrity::get_integrity_status_handler),
+        )
+        .route(
+            "/api/admin/integrity/runs",
+            get(integrity::list_runs_handler),
+        )
+        .route(
+            "/api/admin/integrity/issues",
+            get(integrity::list_issues_handler),
         )
 }
 
