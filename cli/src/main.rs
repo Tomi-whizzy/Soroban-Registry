@@ -28,6 +28,7 @@ mod conversions;
 mod coverage;
 mod dashboard;
 mod deploy;
+mod env;
 mod events;
 mod export;
 mod formal_verification;
@@ -58,7 +59,7 @@ mod webhook;
 mod wizard;
 
 use anyhow::Result;
-use clap::{ArgAction, Parser, Subcommand};
+use clap::{ArgAction, Parser, Subcommand, ValueEnum};
 use colored::Colorize;
 use patch::Severity;
 
@@ -972,6 +973,12 @@ pub enum Commands {
         action: PluginCommands,
     },
 
+    /// Manage environment variable sets for different deployments (#843)
+    Env {
+        #[command(subcommand)]
+        action: EnvCommands,
+    },
+
     /// External command (may be provided by an installed plugin)
     #[command(external_subcommand)]
     External(Vec<String>),
@@ -1764,6 +1771,124 @@ pub enum ApiKeyCommands {
         #[arg(long)]
         json: bool,
     },
+}
+
+/// Sub-commands for the `env` group (#843)
+#[derive(Debug, Subcommand)]
+pub enum EnvCommands {
+    /// Set a variable in an environment
+    ///
+    /// Usage: soroban-registry env set <NAME> <VALUE> [--env <environment>]
+    Set {
+        /// Variable name (shell identifier: letters, digits, underscores)
+        name: String,
+        /// Value to assign
+        value: String,
+        /// Target environment (defaults to the active environment)
+        #[arg(long)]
+        env: Option<String>,
+        /// Print the full value instead of masking it
+        #[arg(long)]
+        show_value: bool,
+    },
+
+    /// Get a variable's value from an environment
+    ///
+    /// Usage: soroban-registry env get <NAME> [--env <environment>] [--json]
+    Get {
+        /// Variable name to look up
+        name: String,
+        /// Source environment (defaults to the active environment)
+        #[arg(long)]
+        env: Option<String>,
+        /// Output as machine-readable JSON
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// List variables in an environment
+    ///
+    /// Usage: soroban-registry env list [--env <environment>] [--all] [--merged] [--json]
+    List {
+        /// Environment to list (defaults to the active environment)
+        #[arg(long)]
+        env: Option<String>,
+        /// List variables in every environment
+        #[arg(long)]
+        all: bool,
+        /// Merge global config defaults into the output
+        #[arg(long)]
+        merged: bool,
+        /// Output as machine-readable JSON
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Copy all variables from one environment to another
+    ///
+    /// Usage: soroban-registry env copy --from <src> --to <dst>
+    Copy {
+        /// Source environment name
+        #[arg(long)]
+        from: String,
+        /// Destination environment name
+        #[arg(long)]
+        to: String,
+        /// Overwrite the destination if it already exists
+        #[arg(long)]
+        overwrite: bool,
+    },
+
+    /// Delete a variable from an environment
+    ///
+    /// Usage: soroban-registry env delete <NAME> [--env <environment>]
+    Delete {
+        /// Variable name to remove
+        name: String,
+        /// Source environment (defaults to the active environment)
+        #[arg(long)]
+        env: Option<String>,
+    },
+
+    /// Export environment variables as a shell-sourceable file
+    ///
+    /// Usage: soroban-registry env export [--env <environment>] [--format shell|json|dotenv]
+    Export {
+        /// Environment to export (defaults to the active environment)
+        #[arg(long)]
+        env: Option<String>,
+        /// Output format: shell (default), json, dotenv
+        #[arg(long, value_enum, default_value_t = EnvExportFormat::Shell)]
+        format: EnvExportFormat,
+        /// Merge global config defaults into the export
+        #[arg(long)]
+        merged: bool,
+    },
+
+    /// Switch the active environment
+    ///
+    /// Usage: soroban-registry env switch <ENVIRONMENT>
+    Switch {
+        /// Environment name to activate
+        environment: String,
+    },
+}
+
+#[derive(Debug, Clone, ValueEnum)]
+pub enum EnvExportFormat {
+    Shell,
+    Json,
+    Dotenv,
+}
+
+impl EnvExportFormat {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::Shell => "shell",
+            Self::Json => "json",
+            Self::Dotenv => "dotenv",
+        }
+    }
 }
 
 /// Sub-commands for the `webhook` group
@@ -3554,6 +3679,81 @@ pub async fn dispatch_command(
             )
             .await?;
         }
+        // ── Environment variable management (#843) ───────────────────────────
+        Commands::Env { action } => match action {
+            EnvCommands::Set {
+                name,
+                value,
+                env,
+                show_value,
+            } => {
+                log::debug!(
+                    "Command: env set | name={} env={:?} show_value={}",
+                    name,
+                    env,
+                    show_value
+                );
+                env::set_var(&name, &value, env.as_deref(), show_value)?;
+            }
+            EnvCommands::Get { name, env, json } => {
+                log::debug!(
+                    "Command: env get | name={} env={:?} json={}",
+                    name,
+                    env,
+                    json
+                );
+                env::get_var(&name, env.as_deref(), json)?;
+            }
+            EnvCommands::List {
+                env,
+                all,
+                merged,
+                json,
+            } => {
+                log::debug!(
+                    "Command: env list | env={:?} all={} merged={} json={}",
+                    env,
+                    all,
+                    merged,
+                    json
+                );
+                env::list_vars(env.as_deref(), all, merged, json)?;
+            }
+            EnvCommands::Copy {
+                from,
+                to,
+                overwrite,
+            } => {
+                log::debug!(
+                    "Command: env copy | from={} to={} overwrite={}",
+                    from,
+                    to,
+                    overwrite
+                );
+                env::copy_env(&from, &to, overwrite)?;
+            }
+            EnvCommands::Delete { name, env } => {
+                log::debug!("Command: env delete | name={} env={:?}", name, env);
+                env::delete_var(&name, env.as_deref())?;
+            }
+            EnvCommands::Export {
+                env,
+                format,
+                merged,
+            } => {
+                log::debug!(
+                    "Command: env export | env={:?} format={:?} merged={}",
+                    env,
+                    format,
+                    merged
+                );
+                env::export_env(env.as_deref(), format.as_str(), merged)?;
+            }
+            EnvCommands::Switch { environment } => {
+                log::debug!("Command: env switch | environment={}", environment);
+                env::switch_env(&environment)?;
+            }
+        },
     }
 
     Ok(())
@@ -3602,5 +3802,35 @@ mod verbose_flag_tests {
     fn verbose_works_after_subcommand_when_global() {
         let cli = parse(&["soroban-registry", "version", "-vv"]);
         assert_eq!(cli.verbose, 2);
+    }
+
+    #[test]
+    fn env_export_rejects_invalid_format() {
+        let err = Cli::try_parse_from(["soroban-registry", "env", "export", "--format", "invalid"])
+            .expect_err("CLI should reject invalid export format");
+
+        assert!(
+            err.to_string().contains("possible values"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn env_set_parses_show_value_flag() {
+        let cli = parse(&[
+            "soroban-registry",
+            "env",
+            "set",
+            "API_KEY",
+            "secret",
+            "--show-value",
+        ]);
+
+        match cli.command {
+            Commands::Env {
+                action: EnvCommands::Set { show_value, .. },
+            } => assert!(show_value),
+            _ => panic!("expected env set command"),
+        }
     }
 }
