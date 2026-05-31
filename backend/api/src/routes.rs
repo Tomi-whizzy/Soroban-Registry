@@ -18,7 +18,7 @@ use crate::{
     recommendation_handlers, report_handlers, resource_handlers, search_postgres,
     security_scan_handlers, similarity_handlers, simulation_handlers, state::AppState,
     state_monitor::handlers as state_monitor_handlers, stats, subscription_handlers,
-    v1_interactions_handlers, v1_similar_handlers, v1_trending_handlers,
+    v1_search_handlers, v1_similar_handlers, v1_trending_handlers,
     verification_handlers, websocket, zk_proof_handlers,
 };
 
@@ -1396,6 +1396,11 @@ pub fn elasticsearch_search_routes() -> Router<AppState> {
 /// Routes for the v1 discovery and reporting endpoints.
 pub fn discovery_reporting_routes() -> Router<AppState> {
     Router::new()
+        // Issue: Advanced search endpoint
+        .route(
+            "/api/v1/contracts/search",
+            get(v1_search_handlers::advanced_search),
+        )
         // Issue #873: Contract issue reporting
         .route(
             "/api/v1/contracts/:id/report",
@@ -1419,10 +1424,5 @@ pub fn discovery_reporting_routes() -> Router<AppState> {
         .route(
             "/api/v1/trending",
             get(v1_trending_handlers::get_trending_v1),
-        )
-        // Interaction history with filtering, stats, and CSV export
-        .route(
-            "/api/v1/contracts/:id/interactions",
-            get(v1_interactions_handlers::get_contract_interactions_v1),
         )
 }
