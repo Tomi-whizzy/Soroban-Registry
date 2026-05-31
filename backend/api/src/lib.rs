@@ -5,6 +5,7 @@ pub mod activity_feed_routes;
 pub mod aggregation;
 pub mod analytics;
 pub mod analytics_handlers;
+pub mod contract_analytics_handlers;
 pub mod auth;
 pub mod auth_handlers;
 pub mod backup_handlers;
