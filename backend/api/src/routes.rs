@@ -733,6 +733,14 @@ pub fn health_routes() -> Router<AppState> {
         .route("/health/ready", get(handlers::health_check_ready))
         .route("/health/detailed", get(handlers::health_check_detailed))
         .route("/api/stats", get(stats::get_stats_handler))
+        .route(
+            "/api/v1/analytics/contracts",
+            get(crate::contract_analytics_handlers::get_contract_analytics),
+        )
+        .route(
+            "/api/analytics/contracts",
+            get(crate::contract_analytics_handlers::get_contract_analytics),
+        )
         // Registry-wide analytics summary (issue #415)
         .route(
             "/api/analytics/summary",
