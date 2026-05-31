@@ -121,7 +121,11 @@ impl WebSecurityConfig {
     }
 
     pub fn csrf_cookie(&self, token: &str) -> String {
-        let secure = if self.csrf_cookie_secure { "; Secure" } else { "" };
+        let secure = if self.csrf_cookie_secure {
+            "; Secure"
+        } else {
+            ""
+        };
         format!(
             "{CSRF_COOKIE_NAME}={token}; Path=/; Max-Age=7200; SameSite={}{}; HttpOnly",
             self.csrf_same_site.as_cookie_value(),
@@ -179,7 +183,10 @@ fn validate_origin(config: &WebSecurityConfig, headers: &HeaderMap) -> Result<()
         }
     }
 
-    if let Some(origin) = headers.get(header::ORIGIN).and_then(|value| value.to_str().ok()) {
+    if let Some(origin) = headers
+        .get(header::ORIGIN)
+        .and_then(|value| value.to_str().ok())
+    {
         if !config.is_origin_allowed(origin) {
             return Err(ApiError::forbidden_with_error(
                 "CORS_ORIGIN_DENIED",

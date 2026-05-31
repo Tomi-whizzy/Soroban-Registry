@@ -7,6 +7,7 @@ use axum::{
     middleware::Next,
     response::Response,
 };
+use base64::Engine as _;
 use chrono::{Duration, Utc};
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
@@ -15,7 +16,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use stellar_strkey::{ed25519::PublicKey as StellarPublicKey, Strkey};
-use base64::Engine as _;
 
 pub const MIN_JWT_SECRET_LEN: usize = 32;
 
@@ -420,7 +420,10 @@ impl FromRequestParts<AppState> for AuthContext {
     }
 }
 
-pub fn authenticate_headers(headers: &HeaderMap, state: &AppState) -> Result<AuthContext, ApiError> {
+pub fn authenticate_headers(
+    headers: &HeaderMap,
+    state: &AppState,
+) -> Result<AuthContext, ApiError> {
     if let Some(api_key) = headers
         .get("x-api-key")
         .and_then(|value| value.to_str().ok())
@@ -430,7 +433,9 @@ pub fn authenticate_headers(headers: &HeaderMap, state: &AppState) -> Result<Aut
         return authenticate_api_key(api_key);
     }
 
-    let Some(auth_header) = headers.get(header::AUTHORIZATION).and_then(|value| value.to_str().ok())
+    let Some(auth_header) = headers
+        .get(header::AUTHORIZATION)
+        .and_then(|value| value.to_str().ok())
     else {
         audit_auth_attempt("missing", false, "authorization header missing");
         return Err(ApiError::unauthorized("Authentication is required"));
@@ -446,9 +451,7 @@ pub fn authenticate_headers(headers: &HeaderMap, state: &AppState) -> Result<Aut
         (AuthMethod::OAuth2, token.trim())
     } else {
         audit_auth_attempt("unknown", false, "unsupported authorization scheme");
-        return Err(ApiError::unauthorized(
-            "Unsupported authorization scheme",
-        ));
+        return Err(ApiError::unauthorized("Unsupported authorization scheme"));
     };
 
     let mgr = state
@@ -531,11 +534,27 @@ fn configured_api_keys() -> Vec<ApiKeyEntry> {
             }
             Some(ApiKeyEntry {
                 key: key.to_string(),
-                subject: parts.get(1).map(|v| v.trim()).filter(|v| !v.is_empty()).unwrap_or("api-key").to_string(),
-                role: parts.get(2).map(|v| v.trim()).filter(|v| !v.is_empty()).unwrap_or("service").to_string(),
+                subject: parts
+                    .get(1)
+                    .map(|v| v.trim())
+                    .filter(|v| !v.is_empty())
+                    .unwrap_or("api-key")
+                    .to_string(),
+                role: parts
+                    .get(2)
+                    .map(|v| v.trim())
+                    .filter(|v| !v.is_empty())
+                    .unwrap_or("service")
+                    .to_string(),
                 permissions: parts
                     .get(3)
-                    .map(|v| v.split('|').map(str::trim).filter(|v| !v.is_empty()).map(ToOwned::to_owned).collect())
+                    .map(|v| {
+                        v.split('|')
+                            .map(str::trim)
+                            .filter(|v| !v.is_empty())
+                            .map(ToOwned::to_owned)
+                            .collect()
+                    })
                     .unwrap_or_else(|| vec!["read:*".to_string()]),
                 mfa_verified: parts
                     .get(4)

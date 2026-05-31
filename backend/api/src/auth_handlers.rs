@@ -10,6 +10,7 @@ use crate::{
     error::{ApiError, ApiResult},
     security::{generate_csrf_token, WebSecurityConfig, CSRF_HEADER_NAME},
     state::AppState,
+    validation::extractors::{FieldError, Validatable},
 };
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
@@ -70,6 +71,23 @@ pub struct RefreshTokenRequest {
     pub refresh_token: String,
     #[serde(default)]
     pub expires_in_seconds: Option<u64>,
+}
+
+impl Validatable for RefreshTokenRequest {
+    fn sanitize(&mut self) {
+        self.refresh_token = self.refresh_token.trim().to_string();
+    }
+
+    fn validate(&self) -> Result<(), Vec<FieldError>> {
+        if self.refresh_token.is_empty() {
+            Err(vec![FieldError::new(
+                "refresh_token",
+                "refresh_token is required",
+            )])
+        } else {
+            Ok(())
+        }
+    }
 }
 
 /// Generate a CSRF token and same-site cookie for browser clients.
@@ -208,13 +226,14 @@ pub async fn refresh_token(
         .expires_in_seconds
         .unwrap_or(86_400)
         .clamp(300, 30 * 24 * 60 * 60);
-    let mut mgr = state
-        .auth_mgr
-        .write()
-        .map_err(|_| ApiError::internal("Authentication state unavailable"))?;
-    let pair = mgr
-        .refresh_access_token(&payload.refresh_token, expires_in_seconds)
-        .map_err(|_| ApiError::unauthorized("Invalid or expired refresh token"))?;
+    let pair = {
+        let mut mgr = state
+            .auth_mgr
+            .write()
+            .map_err(|_| ApiError::internal("Authentication state unavailable"))?;
+        mgr.refresh_access_token(&payload.refresh_token, expires_in_seconds)
+            .map_err(|_| ApiError::unauthorized("Invalid or expired refresh token"))?
+    };
 
     Ok((
         StatusCode::OK,
