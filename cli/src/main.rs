@@ -5,6 +5,8 @@ mod analyze;
 mod audit_command;
 mod backup;
 mod batch_ops;
+mod batch_migrate;
+mod batch_notify;
 mod batch_register;
 mod batch_update;
 mod batch_verify;
@@ -418,6 +420,34 @@ pub enum Commands {
         /// Roll back already-applied operations when any item fails
         #[arg(long)]
         rollback_on_error: bool,
+        /// Recipients file/filter for `batch notify`
+        #[arg(long)]
+        recipients: Option<String>,
+        /// Message type for `batch notify`
+        #[arg(long, default_value = "info")]
+        message_type: String,
+        /// Template file or inline template for `batch notify`
+        #[arg(long)]
+        template: Option<String>,
+        /// Preview notification/migration without sending/writing
+        #[arg(long)]
+        preview: bool,
+        /// RFC3339 schedule for `batch notify`
+        #[arg(long)]
+        schedule: Option<String>,
+        /// Channels for `batch notify`: email,in-app,webhook
+        #[arg(long, value_delimiter = ',')]
+        channels: Vec<String>,
+        /// Filter expression for `batch migrate`
+        #[arg(long)]
+        filter: Option<String>,
+        /// Use atomic/fail-safe migration semantics
+        #[arg(long)]
+        atomic: bool,
+        /// Migration report output path
+        #[arg(long)]
+        report: Option<String>,
+
         /// Output JSON summary
         #[arg(long)]
         json: bool,
@@ -3206,8 +3236,53 @@ pub async fn dispatch_command(
             file,
             value,
             rollback_on_error,
+            recipients,
+            message_type,
+            template,
+            preview,
+            schedule,
+            channels,
+            filter,
+            atomic,
+            report,
             json,
         } => {
+            if operation == "notify" {
+                let recipients = recipients
+                    .as_deref()
+                    .ok_or_else(|| anyhow::anyhow!("batch notify requires --recipients"))?;
+                let message = contracts.join(" ");
+                batch_notify::run_batch_notify(
+                    &cli.api_url,
+                    &message,
+                    recipients,
+                    &message_type,
+                    template.as_deref(),
+                    preview,
+                    schedule.as_deref(),
+                    channels,
+                    json,
+                )
+                .await?;
+                return Ok(());
+            }
+            if operation == "migrate" {
+                anyhow::ensure!(
+                    contracts.len() >= 2,
+                    "batch migrate requires SOURCE and DESTINATION"
+                );
+                batch_migrate::run_batch_migrate(
+                    &contracts[0],
+                    &contracts[1],
+                    filter.as_deref(),
+                    preview,
+                    atomic,
+                    report.as_deref(),
+                    json,
+                )
+                .await?;
+                return Ok(());
+            }
             let op = batch_ops::BatchOperation::parse(&operation)?;
             batch_ops::run(
                 &cli.api_url,
@@ -3283,6 +3358,8 @@ mod batch_audit;
 mod batch_deploy;
 mod batch_export;
 mod batch_import;
+mod batch_migrate;
+mod batch_notify;
 mod batch_register;
 mod batch_verify;
 mod cicd;
@@ -3703,6 +3780,34 @@ pub enum Commands {
         /// Roll back already-applied operations when any item fails
         #[arg(long)]
         rollback_on_error: bool,
+        /// Recipients file/filter for `batch notify`
+        #[arg(long)]
+        recipients: Option<String>,
+        /// Message type for `batch notify`
+        #[arg(long, default_value = "info")]
+        message_type: String,
+        /// Template file or inline template for `batch notify`
+        #[arg(long)]
+        template: Option<String>,
+        /// Preview notification/migration without sending/writing
+        #[arg(long)]
+        preview: bool,
+        /// RFC3339 schedule for `batch notify`
+        #[arg(long)]
+        schedule: Option<String>,
+        /// Channels for `batch notify`: email,in-app,webhook
+        #[arg(long, value_delimiter = ',')]
+        channels: Vec<String>,
+        /// Filter expression for `batch migrate`
+        #[arg(long)]
+        filter: Option<String>,
+        /// Use atomic/fail-safe migration semantics
+        #[arg(long)]
+        atomic: bool,
+        /// Migration report output path
+        #[arg(long)]
+        report: Option<String>,
+
         /// Output JSON summary
         #[arg(long)]
         json: bool,
@@ -4298,6 +4403,7 @@ pub enum Commands {
     Cache {
         #[command(subcommand)]
         action: CacheCommands,
+    },
     /// Manage environment variable sets for different deployments (#843)
     Env {
         #[command(subcommand)]
@@ -7018,6 +7124,10 @@ pub async fn dispatch_command(
                     &address,
                     &network,
                     threshold.as_deref(),
+                    json,
+                )
+                .await?;
+            }
             ContractCommands::Stats {
                 network,
                 category,
@@ -7074,6 +7184,7 @@ pub async fn dispatch_command(
                     page_size,
                 )
                 .await?;
+            }
             ContractCommands::Highlight {
                 address,
                 action,
@@ -7414,8 +7525,53 @@ pub async fn dispatch_command(
             file,
             value,
             rollback_on_error,
+            recipients,
+            message_type,
+            template,
+            preview,
+            schedule,
+            channels,
+            filter,
+            atomic,
+            report,
             json,
         } => {
+            if operation == "notify" {
+                let recipients = recipients
+                    .as_deref()
+                    .ok_or_else(|| anyhow::anyhow!("batch notify requires --recipients"))?;
+                let message = contracts.join(" ");
+                batch_notify::run_batch_notify(
+                    &cli.api_url,
+                    &message,
+                    recipients,
+                    &message_type,
+                    template.as_deref(),
+                    preview,
+                    schedule.as_deref(),
+                    channels,
+                    json,
+                )
+                .await?;
+                return Ok(());
+            }
+            if operation == "migrate" {
+                anyhow::ensure!(
+                    contracts.len() >= 2,
+                    "batch migrate requires SOURCE and DESTINATION"
+                );
+                batch_migrate::run_batch_migrate(
+                    &contracts[0],
+                    &contracts[1],
+                    filter.as_deref(),
+                    preview,
+                    atomic,
+                    report.as_deref(),
+                    json,
+                )
+                .await?;
+                return Ok(());
+            }
             let op = batch_ops::BatchOperation::parse(&operation)?;
             batch_ops::run(
                 &cli.api_url,
@@ -7634,6 +7790,8 @@ mod batch_audit;
 mod batch_deploy;
 mod batch_export;
 mod batch_import;
+mod batch_migrate;
+mod batch_notify;
 mod batch_register;
 mod batch_verify;
 mod cicd;
@@ -8055,6 +8213,34 @@ pub enum Commands {
         /// Roll back already-applied operations when any item fails
         #[arg(long)]
         rollback_on_error: bool,
+        /// Recipients file/filter for `batch notify`
+        #[arg(long)]
+        recipients: Option<String>,
+        /// Message type for `batch notify`
+        #[arg(long, default_value = "info")]
+        message_type: String,
+        /// Template file or inline template for `batch notify`
+        #[arg(long)]
+        template: Option<String>,
+        /// Preview notification/migration without sending/writing
+        #[arg(long)]
+        preview: bool,
+        /// RFC3339 schedule for `batch notify`
+        #[arg(long)]
+        schedule: Option<String>,
+        /// Channels for `batch notify`: email,in-app,webhook
+        #[arg(long, value_delimiter = ',')]
+        channels: Vec<String>,
+        /// Filter expression for `batch migrate`
+        #[arg(long)]
+        filter: Option<String>,
+        /// Use atomic/fail-safe migration semantics
+        #[arg(long)]
+        atomic: bool,
+        /// Migration report output path
+        #[arg(long)]
+        report: Option<String>,
+
         /// Output JSON summary
         #[arg(long)]
         json: bool,
@@ -8650,6 +8836,7 @@ pub enum Commands {
     Cache {
         #[command(subcommand)]
         action: CacheCommands,
+    },
     /// Manage environment variable sets for different deployments (#843)
     Env {
         #[command(subcommand)]
@@ -11433,6 +11620,10 @@ pub async fn dispatch_command(
                     publisher.as_deref(),
                     tags.as_deref(),
                     skip_abi,
+                    json,
+                )
+                .await?;
+            }
             ContractCommands::Risk {
                 address,
                 network,
@@ -11451,6 +11642,10 @@ pub async fn dispatch_command(
                     &address,
                     &network,
                     threshold.as_deref(),
+                    json,
+                )
+                .await?;
+            }
             ContractCommands::Stats {
                 network,
                 category,
@@ -11507,6 +11702,7 @@ pub async fn dispatch_command(
                     page_size,
                 )
                 .await?;
+            }
             ContractCommands::Highlight {
                 address,
                 action,
@@ -11847,8 +12043,53 @@ pub async fn dispatch_command(
             file,
             value,
             rollback_on_error,
+            recipients,
+            message_type,
+            template,
+            preview,
+            schedule,
+            channels,
+            filter,
+            atomic,
+            report,
             json,
         } => {
+            if operation == "notify" {
+                let recipients = recipients
+                    .as_deref()
+                    .ok_or_else(|| anyhow::anyhow!("batch notify requires --recipients"))?;
+                let message = contracts.join(" ");
+                batch_notify::run_batch_notify(
+                    &cli.api_url,
+                    &message,
+                    recipients,
+                    &message_type,
+                    template.as_deref(),
+                    preview,
+                    schedule.as_deref(),
+                    channels,
+                    json,
+                )
+                .await?;
+                return Ok(());
+            }
+            if operation == "migrate" {
+                anyhow::ensure!(
+                    contracts.len() >= 2,
+                    "batch migrate requires SOURCE and DESTINATION"
+                );
+                batch_migrate::run_batch_migrate(
+                    &contracts[0],
+                    &contracts[1],
+                    filter.as_deref(),
+                    preview,
+                    atomic,
+                    report.as_deref(),
+                    json,
+                )
+                .await?;
+                return Ok(());
+            }
             let op = batch_ops::BatchOperation::parse(&operation)?;
             batch_ops::run(
                 &cli.api_url,
